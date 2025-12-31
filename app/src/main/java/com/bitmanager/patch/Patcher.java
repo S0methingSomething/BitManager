@@ -1,10 +1,12 @@
 package com.bitmanager.patch;
 
+import android.content.Context;
 import java.io.*;
 import java.util.*;
 import java.util.zip.*;
 
 public class Patcher {
+    private final Context context;
     private final File apkFile;
     private final File outputDir;
     private final List<Patch> patches;
@@ -17,7 +19,8 @@ public class Patcher {
         void onError(String error);
     }
     
-    public Patcher(File apkFile, File outputDir, List<Patch> patches, PatchCallback callback) {
+    public Patcher(Context context, File apkFile, File outputDir, List<Patch> patches, PatchCallback callback) {
+        this.context = context;
         this.apkFile = apkFile;
         this.outputDir = outputDir;
         this.patches = patches;
@@ -79,7 +82,7 @@ public class Patcher {
         // Sign APK
         callback.onLog("Signing APK...");
         File signedApk = new File(outputDir, "patched.apk");
-        ApkSigner.sign(unsignedApk, signedApk, callback);
+        ApkSignerUtil.sign(context, unsignedApk, signedApk, callback);
         
         // Cleanup
         deleteRecursive(tempDir);

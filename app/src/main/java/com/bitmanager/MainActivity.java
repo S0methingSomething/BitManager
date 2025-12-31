@@ -167,7 +167,7 @@ public class MainActivity extends Activity implements Patcher.PatchCallback {
         patchBtn.setEnabled(false);
         log("\nStarting patch process...");
         
-        Patcher patcher = new Patcher(selectedApk, getCacheDir(), enabledPatches, this);
+        Patcher patcher = new Patcher(this, selectedApk, getCacheDir(), enabledPatches, this);
         patcher.patch();
     }
 
