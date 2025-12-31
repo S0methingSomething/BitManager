@@ -10,8 +10,8 @@ android {
         applicationId "com.bitmanager"
         minSdk 24
         targetSdk 34
-        versionCode 20505
-        versionName "2.5.5"
+        versionCode 20600
+        versionName "2.6.0"
     }
 
     buildFeatures {

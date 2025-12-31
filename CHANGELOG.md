@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/S0methingSomething/BitManager/compare/v2.5.5...v2.6.0) (2025-12-31)
+
+
+### Features
+
+* add CLI patcher tool ([ce1f8dd](https://github.com/S0methingSomething/BitManager/commit/ce1f8ddf40298fb4237e46f65a9d2a2edac281bd))
+
 ## [2.5.5](https://github.com/S0methingSomething/BitManager/compare/v2.5.4...v2.5.5) (2025-12-31)
 
 
