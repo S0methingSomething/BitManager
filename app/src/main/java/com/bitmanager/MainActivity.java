@@ -452,7 +452,7 @@ public class MainActivity extends Activity {
         
         // Store in PKCS12
         ks.load(null, "android".toCharArray());
-        ks.setKeyEntry("key", pk, "android".toCharArray(), new Certificate[]{cert});
+        ks.setKeyEntry("key", pk, "android".toCharArray(), new java.security.cert.Certificate[]{cert});
         
         try (FileOutputStream fos = new FileOutputStream(ksFile)) {
             ks.store(fos, "android".toCharArray());
