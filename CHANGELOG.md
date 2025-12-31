@@ -1,3 +1,10 @@
+## [2.3.1](https://github.com/S0methingSomething/BitManager/compare/v2.3.0...v2.3.1) (2025-12-31)
+
+
+### Bug Fixes
+
+* copy APK to /data/local/tmp/ for system_server access ([1842963](https://github.com/S0methingSomething/BitManager/commit/1842963e9a39252b92718a05752b33a8e9ca26c7))
+
 # [2.3.0](https://github.com/S0methingSomething/BitManager/compare/v2.2.3...v2.3.0) (2025-12-31)
 
 
