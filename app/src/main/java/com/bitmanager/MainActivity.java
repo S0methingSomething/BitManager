@@ -2,7 +2,6 @@ package com.bitmanager;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -11,6 +10,7 @@ import androidx.core.content.FileProvider;
 import org.json.*;
 import java.io.*;
 import java.net.*;
+import java.security.*;
 import java.util.*;
 import java.util.zip.*;
 
@@ -18,18 +18,18 @@ public class MainActivity extends Activity {
     private static final int PICK_APK = 1;
     private static final String PATCHES_URL = "https://raw.githubusercontent.com/S0methingSomething/BitManager/main/patches/";
     
-    private TextView status;
-    private ProgressBar progress;
+    private TextView logView;
+    private ScrollView logScroll;
     private LinearLayout patchList;
-    private Button selectApkBtn, patchBtn, installBtn;
+    private Button selectApkBtn, patchBtn;
     
     private List<Patch> patches = new ArrayList<>();
     private Set<Integer> selectedPatches = new HashSet<>();
     private String apkVersion;
     private File selectedApk;
     private File patchedApk;
+    private StringBuilder logBuilder = new StringBuilder();
 
-    // ARM64 patches
     private static final byte[] RETURN_TRUE = {0x20, 0x00, (byte)0x80, 0x52, (byte)0xC0, 0x03, 0x5F, (byte)0xD6};
     private static final byte[] RETURN_FALSE = {0x00, 0x00, (byte)0x80, 0x52, (byte)0xC0, 0x03, 0x5F, (byte)0xD6};
 
@@ -37,16 +37,24 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         setContentView(R.layout.activity_main);
-        status = findViewById(R.id.status);
-        progress = findViewById(R.id.progress);
+        logView = findViewById(R.id.logView);
+        logScroll = findViewById(R.id.logScroll);
         patchList = findViewById(R.id.patchList);
         selectApkBtn = findViewById(R.id.selectApkBtn);
         patchBtn = findViewById(R.id.patchBtn);
-        installBtn = findViewById(R.id.installBtn);
         
         selectApkBtn.setOnClickListener(v -> pickApk());
         patchBtn.setOnClickListener(v -> patchApk());
-        installBtn.setOnClickListener(v -> installApk());
+        
+        log("BitManager ready\nSelect a BitLife APK to patch");
+    }
+
+    private void log(String msg) {
+        logBuilder.append(msg).append("\n");
+        runOnUiThread(() -> {
+            logView.setText(logBuilder.toString());
+            logScroll.post(() -> logScroll.fullScroll(View.FOCUS_DOWN));
+        });
     }
 
     private void pickApk() {
@@ -58,10 +66,15 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         if (req == PICK_APK && res == RESULT_OK && data != null) {
-            selectedApk = copyToCache(data.getData(), "selected.apk");
-            if (selectedApk != null) {
-                extractVersionFromApk();
-            }
+            logBuilder.setLength(0);
+            log("Loading APK...");
+            new Thread(() -> {
+                selectedApk = copyToCache(data.getData(), "selected.apk");
+                if (selectedApk != null) {
+                    log("✓ APK loaded (" + (selectedApk.length() / 1024 / 1024) + " MB)");
+                    extractVersionFromApk();
+                }
+            }).start();
         }
     }
 
@@ -76,7 +89,7 @@ public class MainActivity extends Activity {
             }
             return f;
         } catch (Exception e) {
-            status.setText("Failed to load APK: " + e.getMessage());
+            log("✗ Failed to load APK: " + e.getMessage());
             return null;
         }
     }
@@ -87,52 +100,45 @@ public class MainActivity extends Activity {
                 .getPackageArchiveInfo(selectedApk.getAbsolutePath(), 0);
             if (info != null && "com.candywriter.bitlife".equals(info.packageName)) {
                 apkVersion = info.versionName;
-                status.setText("BitLife " + apkVersion + " loaded\nFetching patches...");
+                log("✓ BitLife v" + apkVersion + " detected");
                 loadPatches();
             } else {
-                status.setText("Not a BitLife APK!");
+                log("✗ Not a BitLife APK!");
                 selectedApk = null;
             }
         } catch (Exception e) {
-            status.setText("Failed to read APK: " + e.getMessage());
+            log("✗ Failed to read APK: " + e.getMessage());
         }
     }
 
     private void loadPatches() {
-        progress.setVisibility(View.VISIBLE);
-        new Thread(() -> {
-            try {
-                String json = fetch(PATCHES_URL + apkVersion + ".json");
-                JSONObject obj = new JSONObject(json);
-                JSONArray arr = obj.getJSONArray("patches");
-                
-                patches.clear();
-                for (int i = 0; i < arr.length(); i++) {
-                    JSONObject p = arr.getJSONObject(i);
-                    Patch patch = new Patch();
-                    patch.name = p.getString("name");
-                    patch.description = p.getString("description");
-                    patch.patchType = p.getString("patch");
-                    JSONArray offsets = p.getJSONArray("offsets");
-                    patch.offsets = new int[offsets.length()];
-                    for (int j = 0; j < offsets.length(); j++) {
-                        patch.offsets[j] = Integer.decode(offsets.getString(j));
-                    }
-                    patches.add(patch);
+        log("Fetching patches for v" + apkVersion + "...");
+        try {
+            String json = fetch(PATCHES_URL + apkVersion + ".json");
+            JSONObject obj = new JSONObject(json);
+            JSONArray arr = obj.getJSONArray("patches");
+            
+            patches.clear();
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject p = arr.getJSONObject(i);
+                Patch patch = new Patch();
+                patch.name = p.getString("name");
+                patch.description = p.getString("description");
+                patch.patchType = p.getString("patch");
+                JSONArray offsets = p.getJSONArray("offsets");
+                patch.offsets = new int[offsets.length()];
+                for (int j = 0; j < offsets.length(); j++) {
+                    patch.offsets[j] = Integer.decode(offsets.getString(j));
                 }
-                
-                runOnUiThread(() -> {
-                    showPatches();
-                    progress.setVisibility(View.GONE);
-                    status.setText("BitLife " + apkVersion + "\nSelect patches:");
-                });
-            } catch (Exception e) {
-                runOnUiThread(() -> {
-                    progress.setVisibility(View.GONE);
-                    status.setText("No patches for v" + apkVersion + "\n" + e.getMessage());
-                });
+                patches.add(patch);
+                log("  • " + patch.name + " (" + patch.offsets.length + " offsets)");
             }
-        }).start();
+            
+            log("✓ Found " + patches.size() + " patches\n");
+            runOnUiThread(this::showPatches);
+        } catch (Exception e) {
+            log("✗ No patches available for v" + apkVersion);
+        }
     }
 
     private void showPatches() {
@@ -141,9 +147,9 @@ public class MainActivity extends Activity {
         for (int i = 0; i < patches.size(); i++) {
             Patch p = patches.get(i);
             CheckBox cb = new CheckBox(this);
-            cb.setText(p.name + "\n" + p.description);
-            cb.setTextSize(14);
-            cb.setPadding(0, 16, 0, 16);
+            cb.setText(p.name);
+            cb.setTextSize(16);
+            cb.setPadding(0, 12, 0, 12);
             int idx = i;
             cb.setOnCheckedChangeListener((v, checked) -> {
                 if (checked) selectedPatches.add(idx);
@@ -154,6 +160,7 @@ public class MainActivity extends Activity {
             selectedPatches.add(i);
             patchList.addView(cb);
         }
+        patchList.setVisibility(View.VISIBLE);
         patchBtn.setEnabled(true);
         patchBtn.setVisibility(View.VISIBLE);
     }
@@ -170,22 +177,31 @@ public class MainActivity extends Activity {
     }
 
     private void patchApk() {
-        setEnabled(false);
-        progress.setVisibility(View.VISIBLE);
-        status.setText("Patching APK...");
-
+        patchBtn.setEnabled(false);
+        selectApkBtn.setEnabled(false);
+        
         new Thread(() -> {
             try {
+                log("═══════════════════════════════");
+                log("Starting patch process...\n");
+                
+                // Extract
+                log("[1/4] Extracting APK...");
                 File extractDir = new File(getCacheDir(), "apk_extract");
                 deleteRecursive(extractDir);
                 extractDir.mkdirs();
-                
                 unzip(selectedApk, extractDir);
+                log("✓ Extracted\n");
 
+                // Find lib
+                log("[2/4] Locating libil2cpp.so...");
                 File libFile = findLib(extractDir);
                 if (libFile == null) throw new Exception("libil2cpp.so not found");
+                log("✓ Found: " + libFile.getName() + " (" + (libFile.length() / 1024 / 1024) + " MB)\n");
 
-                int count = 0;
+                // Patch
+                log("[3/4] Applying patches...");
+                int totalPatched = 0;
                 try (RandomAccessFile raf = new RandomAccessFile(libFile, "rw")) {
                     for (int idx : selectedPatches) {
                         Patch p = patches.get(idx);
@@ -193,28 +209,36 @@ public class MainActivity extends Activity {
                         for (int off : p.offsets) {
                             raf.seek(off);
                             raf.write(patch);
-                            count++;
                         }
+                        totalPatched += p.offsets.length;
+                        log("  ✓ " + p.name + " (" + p.offsets.length + ")");
                     }
                 }
+                log("✓ Patched " + totalPatched + " functions\n");
 
+                // Repack
+                log("[4/4] Repacking APK...");
                 patchedApk = new File(getCacheDir(), "BitLife_patched.apk");
                 zip(extractDir, patchedApk);
                 deleteRecursive(extractDir);
+                log("✓ Created: " + (patchedApk.length() / 1024 / 1024) + " MB\n");
 
-                int finalCount = count;
+                log("═══════════════════════════════");
+                log("✓ PATCHING COMPLETE!\n");
+                log("Note: APK is unsigned. You may need to:");
+                log("1. Uninstall original BitLife first");
+                log("2. Enable 'Install unknown apps'\n");
+                
                 runOnUiThread(() -> {
-                    status.setText("✓ Patched " + finalCount + " functions!\nTap Install to install.");
-                    progress.setVisibility(View.GONE);
-                    installBtn.setEnabled(true);
-                    installBtn.setVisibility(View.VISIBLE);
-                    setEnabled(true);
+                    selectApkBtn.setEnabled(true);
+                    installApk();
                 });
+                
             } catch (Exception e) {
+                log("\n✗ FAILED: " + e.getMessage());
                 runOnUiThread(() -> {
-                    status.setText("Patch failed: " + e.getMessage());
-                    progress.setVisibility(View.GONE);
-                    setEnabled(true);
+                    patchBtn.setEnabled(true);
+                    selectApkBtn.setEnabled(true);
                 });
             }
         }).start();
@@ -235,10 +259,11 @@ public class MainActivity extends Activity {
             Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".provider", patchedApk);
             Intent i = new Intent(Intent.ACTION_VIEW);
             i.setDataAndType(uri, "application/vnd.android.package-archive");
-            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(i);
         } catch (Exception e) {
-            status.setText("Install failed: " + e.getMessage());
+            log("✗ Install failed: " + e.getMessage());
         }
     }
 
@@ -292,11 +317,6 @@ public class MainActivity extends Activity {
             if (files != null) for (File c : files) deleteRecursive(c);
         }
         f.delete();
-    }
-
-    private void setEnabled(boolean e) { 
-        selectApkBtn.setEnabled(e);
-        patchBtn.setEnabled(e && !selectedPatches.isEmpty());
     }
 
     static class Patch {
