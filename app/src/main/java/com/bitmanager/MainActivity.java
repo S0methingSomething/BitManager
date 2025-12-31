@@ -1,10 +1,13 @@
 package com.bitmanager;
 
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.View;
 import android.widget.*;
 import androidx.core.content.FileProvider;
@@ -16,6 +19,32 @@ import java.util.*;
 import java.util.zip.*;
 import java.security.*;
 import java.security.cert.*;
+
+public class MainActivity extends Activity {
+    private static final int PICK_APK = 1;
+    private static final int SHIZUKU_CODE = 2;
+    private static final String PATCHES_URL = "https://raw.githubusercontent.com/S0methingSomething/BitManager/main/patches/";
+    
+    private IShellService shellService;
+    private final ServiceConnection shellConn = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder binder) {
+            shellService = IShellService.Stub.asInterface(binder);
+            log("Shizuku service connected");
+            doShizukuInstall();
+        }
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            shellService = null;
+        }
+    };
+    
+    private final Shizuku.UserServiceArgs shellArgs = new Shizuku.UserServiceArgs(
+        new ComponentName(BuildConfig.APPLICATION_ID, ShellService.class.getName()))
+        .daemon(false)
+        .processNameSuffix("shell")
+        .debuggable(BuildConfig.DEBUG)
+        .version(BuildConfig.VERSION_CODE);
 
 public class MainActivity extends Activity {
     private static final int PICK_APK = 1;
@@ -287,7 +316,17 @@ public class MainActivity extends Activity {
     }
     
     private void installWithShizuku() {
-        log("\nInstalling via Shizuku (Play Store spoof)...");
+        log("\nConnecting to Shizuku service...");
+        try {
+            Shizuku.bindUserService(shellArgs, shellConn);
+        } catch (Exception e) {
+            log("✗ Failed to bind Shizuku service: " + e.getMessage());
+            installStandard();
+        }
+    }
+    
+    private void doShizukuInstall() {
+        log("Installing via Shizuku (Play Store spoof)...");
         new Thread(() -> {
             try {
                 // Copy APK to world-readable location
@@ -298,28 +337,23 @@ public class MainActivity extends Activity {
                 
                 String cmd = "pm install -i com.android.vending -r " + installApk.getAbsolutePath();
                 log("Running: " + cmd);
-                Process p = Shizuku.newProcess(new String[]{"sh", "-c", cmd}, null, null);
                 
-                BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-                BufferedReader er = new BufferedReader(new InputStreamReader(p.getErrorStream()));
-                String line;
-                while ((line = br.readLine()) != null) log("stdout: " + line);
-                while ((line = er.readLine()) != null) log("stderr: " + line);
+                String result = shellService.exec(cmd);
+                for (String line : result.split("\n")) {
+                    log(line);
+                }
                 
-                int exit = p.waitFor();
-                log("Exit code: " + exit);
                 installApk.delete();
+                Shizuku.unbindUserService(shellArgs, shellConn, true);
                 
-                if (exit == 0) {
+                if (result.contains("Success")) {
                     log("✓ Installed successfully (as Play Store app)");
                 } else {
-                    log("✗ Install failed (exit " + exit + ")");
                     log("Falling back to standard install...");
                     runOnUiThread(this::installStandard);
                 }
             } catch (Exception e) {
                 log("✗ Shizuku install failed: " + e.getMessage());
-                e.printStackTrace();
                 runOnUiThread(this::installStandard);
             }
         }).start();
