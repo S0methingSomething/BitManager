@@ -19,8 +19,8 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="ReVanced-style patcher for BitLife"
+            android:layout_marginTop="4dp"
+            android:text="Patch BitLife APK"
             android:textSize="12sp"
             android:textColor="#888" />
 
@@ -28,15 +28,15 @@
             android:id="@+id/selectApkBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Select APK to Patch" />
+            android:layout_marginTop="24dp"
+            android:text="Select BitLife APK" />
 
         <TextView
             android:id="@+id/status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Select APK or patch installed app"
+            android:text="Select a BitLife APK to patch"
             android:textSize="14sp" />
 
         <ProgressBar
@@ -53,60 +53,23 @@
             android:layout_marginTop="16dp"
             android:orientation="vertical" />
 
-        <LinearLayout
+        <Button
+            android:id="@+id/patchBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:orientation="vertical">
+            android:layout_marginTop="16dp"
+            android:enabled="false"
+            android:visibility="gone"
+            android:text="Patch APK" />
 
-            <Button
-                android:id="@+id/patchApkBtn"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:enabled="false"
-                android:text="Patch APK"
-                android:visibility="gone" />
-
-            <Button
-                android:id="@+id/installBtn"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:enabled="false"
-                android:text="Install Patched APK"
-                android:visibility="gone" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/applyLiveBtn"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:enabled="false"
-                    android:text="Apply Live" />
-
-                <Button
-                    android:id="@+id/restoreBtn"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_weight="1"
-                    android:enabled="false"
-                    android:text="Restore" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="wrap_content"
+        <Button
+            android:id="@+id/installBtn"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:text="Requires Shizuku for live patching"
-            android:textColor="#888"
-            android:textSize="12sp" />
+            android:layout_marginTop="8dp"
+            android:enabled="false"
+            android:visibility="gone"
+            android:text="Install Patched APK" />
 
     </LinearLayout>
 </ScrollView>

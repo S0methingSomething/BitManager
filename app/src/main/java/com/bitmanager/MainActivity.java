@@ -1,16 +1,13 @@
 package com.bitmanager;
 
 import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.view.View;
 import android.widget.*;
-import rikka.shizuku.Shizuku;
+import androidx.core.content.FileProvider;
 import org.json.*;
 import java.io.*;
 import java.net.*;
@@ -18,40 +15,19 @@ import java.util.*;
 import java.util.zip.*;
 
 public class MainActivity extends Activity {
-    private static final int SHIZUKU_CODE = 1;
-    private static final int PICK_APK = 2;
+    private static final int PICK_APK = 1;
     private static final String PATCHES_URL = "https://raw.githubusercontent.com/S0methingSomething/BitManager/main/patches/";
     
     private TextView status;
     private ProgressBar progress;
     private LinearLayout patchList;
-    private Button selectApkBtn, patchApkBtn, installBtn, applyLiveBtn, restoreBtn;
+    private Button selectApkBtn, patchBtn, installBtn;
     
     private List<Patch> patches = new ArrayList<>();
     private Set<Integer> selectedPatches = new HashSet<>();
-    private String bitlifeVersion;
+    private String apkVersion;
     private File selectedApk;
     private File patchedApk;
-
-    private IShellService shellService;
-    private Shizuku.UserServiceArgs shellServiceArgs = new Shizuku.UserServiceArgs(
-        new ComponentName("com.bitmanager", ShellService.class.getName()))
-        .daemon(false)
-        .processNameSuffix("shell")
-        .debuggable(BuildConfig.DEBUG)
-        .version(1);
-    
-    private ServiceConnection shellServiceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder binder) {
-            shellService = IShellService.Stub.asInterface(binder);
-        }
-        
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            shellService = null;
-        }
-    };
 
     // ARM64 patches
     private static final byte[] RETURN_TRUE = {0x20, 0x00, (byte)0x80, 0x52, (byte)0xC0, 0x03, 0x5F, (byte)0xD6};
@@ -65,24 +41,18 @@ public class MainActivity extends Activity {
         progress = findViewById(R.id.progress);
         patchList = findViewById(R.id.patchList);
         selectApkBtn = findViewById(R.id.selectApkBtn);
-        patchApkBtn = findViewById(R.id.patchApkBtn);
+        patchBtn = findViewById(R.id.patchBtn);
         installBtn = findViewById(R.id.installBtn);
-        applyLiveBtn = findViewById(R.id.applyLiveBtn);
-        restoreBtn = findViewById(R.id.restoreBtn);
         
         selectApkBtn.setOnClickListener(v -> pickApk());
-        patchApkBtn.setOnClickListener(v -> patchApk());
+        patchBtn.setOnClickListener(v -> patchApk());
         installBtn.setOnClickListener(v -> installApk());
-        applyLiveBtn.setOnClickListener(v -> applyLive());
-        restoreBtn.setOnClickListener(v -> restore());
-        
-        checkBitLife();
     }
 
     private void pickApk() {
         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-        i.setType("application/vnd.android.package-archive");
-        startActivityForResult(i, PICK_APK);
+        i.setType("*/*");
+        startActivityForResult(Intent.createChooser(i, "Select BitLife APK"), PICK_APK);
     }
 
     @Override
@@ -113,27 +83,18 @@ public class MainActivity extends Activity {
 
     private void extractVersionFromApk() {
         try {
-            PackageManager pm = getPackageManager();
-            android.content.pm.PackageInfo info = pm.getPackageArchiveInfo(selectedApk.getAbsolutePath(), 0);
-            if (info != null) {
-                bitlifeVersion = info.versionName;
-                status.setText("APK loaded: BitLife " + bitlifeVersion + "\nLoading patches...");
-                patchApkBtn.setEnabled(false);
-                installBtn.setEnabled(false);
+            android.content.pm.PackageInfo info = getPackageManager()
+                .getPackageArchiveInfo(selectedApk.getAbsolutePath(), 0);
+            if (info != null && "com.candywriter.bitlife".equals(info.packageName)) {
+                apkVersion = info.versionName;
+                status.setText("BitLife " + apkVersion + " loaded\nFetching patches...");
                 loadPatches();
+            } else {
+                status.setText("Not a BitLife APK!");
+                selectedApk = null;
             }
         } catch (Exception e) {
             status.setText("Failed to read APK: " + e.getMessage());
-        }
-    }
-
-    private void checkBitLife() {
-        try {
-            bitlifeVersion = getPackageManager().getPackageInfo("com.candywriter.bitlife", 0).versionName;
-            status.setText("BitLife " + bitlifeVersion + " found\nLoading patches...");
-            loadPatches();
-        } catch (PackageManager.NameNotFoundException e) {
-            status.setText("BitLife not installed!");
         }
     }
 
@@ -141,7 +102,7 @@ public class MainActivity extends Activity {
         progress.setVisibility(View.VISIBLE);
         new Thread(() -> {
             try {
-                String json = fetch(PATCHES_URL + bitlifeVersion + ".json");
+                String json = fetch(PATCHES_URL + apkVersion + ".json");
                 JSONObject obj = new JSONObject(json);
                 JSONArray arr = obj.getJSONArray("patches");
                 
@@ -163,12 +124,12 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     showPatches();
                     progress.setVisibility(View.GONE);
-                    status.setText("BitLife " + bitlifeVersion + "\nSelect patches:");
+                    status.setText("BitLife " + apkVersion + "\nSelect patches:");
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     progress.setVisibility(View.GONE);
-                    status.setText("No patches for " + bitlifeVersion + "\n" + e.getMessage());
+                    status.setText("No patches for v" + apkVersion + "\n" + e.getMessage());
                 });
             }
         }).start();
@@ -176,6 +137,7 @@ public class MainActivity extends Activity {
 
     private void showPatches() {
         patchList.removeAllViews();
+        selectedPatches.clear();
         for (int i = 0; i < patches.size(); i++) {
             Patch p = patches.get(i);
             CheckBox cb = new CheckBox(this);
@@ -186,44 +148,42 @@ public class MainActivity extends Activity {
             cb.setOnCheckedChangeListener((v, checked) -> {
                 if (checked) selectedPatches.add(idx);
                 else selectedPatches.remove(idx);
-                updateButtons();
+                patchBtn.setEnabled(!selectedPatches.isEmpty());
             });
             cb.setChecked(true);
             selectedPatches.add(i);
             patchList.addView(cb);
         }
-        updateButtons();
+        patchBtn.setEnabled(true);
+        patchBtn.setVisibility(View.VISIBLE);
     }
 
-    private void updateButtons() {
-        boolean hasPatches = !selectedPatches.isEmpty();
-        if (selectedApk != null) {
-            patchApkBtn.setEnabled(hasPatches);
-        } else {
-            applyLiveBtn.setEnabled(hasPatches);
-            restoreBtn.setEnabled(true);
-        }
+    private String fetch(String url) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setConnectTimeout(10000);
+        BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream()));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = r.readLine()) != null) sb.append(line);
+        r.close();
+        return sb.toString();
     }
 
     private void patchApk() {
-        if (!checkShizuku()) return;
         setEnabled(false);
         progress.setVisibility(View.VISIBLE);
         status.setText("Patching APK...");
 
         new Thread(() -> {
             try {
-                // Extract APK
                 File extractDir = new File(getCacheDir(), "apk_extract");
+                deleteRecursive(extractDir);
                 extractDir.mkdirs();
+                
                 unzip(selectedApk, extractDir);
 
-                // Find and patch libil2cpp.so
-                File libDir = new File(extractDir, "lib/arm64-v8a");
-                if (!libDir.exists()) libDir = new File(extractDir, "lib/armeabi-v7a");
-                File libFile = new File(libDir, "libil2cpp.so");
-                
-                if (!libFile.exists()) throw new Exception("libil2cpp.so not found in APK");
+                File libFile = findLib(extractDir);
+                if (libFile == null) throw new Exception("libil2cpp.so not found");
 
                 int count = 0;
                 try (RandomAccessFile raf = new RandomAccessFile(libFile, "rw")) {
@@ -238,37 +198,48 @@ public class MainActivity extends Activity {
                     }
                 }
 
-                // Repack APK
-                patchedApk = new File(getCacheDir(), "bitlife_patched.apk");
+                patchedApk = new File(getCacheDir(), "BitLife_patched.apk");
                 zip(extractDir, patchedApk);
                 deleteRecursive(extractDir);
 
-                // Sign APK
-                signApk(patchedApk);
-
                 int finalCount = count;
                 runOnUiThread(() -> {
-                    status.setText("✓ Patched " + finalCount + " functions!\nReady to install.");
+                    status.setText("✓ Patched " + finalCount + " functions!\nTap Install to install.");
                     progress.setVisibility(View.GONE);
                     installBtn.setEnabled(true);
+                    installBtn.setVisibility(View.VISIBLE);
                     setEnabled(true);
                 });
             } catch (Exception e) {
-                error("Patch failed: " + e.getMessage());
+                runOnUiThread(() -> {
+                    status.setText("Patch failed: " + e.getMessage());
+                    progress.setVisibility(View.GONE);
+                    setEnabled(true);
+                });
             }
         }).start();
     }
 
+    private File findLib(File dir) {
+        File lib = new File(dir, "lib/arm64-v8a/libil2cpp.so");
+        if (lib.exists()) return lib;
+        lib = new File(dir, "lib/armeabi-v7a/libil2cpp.so");
+        if (lib.exists()) return lib;
+        return null;
+    }
+
     private void installApk() {
-        if (patchedApk == null || !patchedApk.exists()) {
-            status.setText("No patched APK to install");
-            return;
-        }
+        if (patchedApk == null || !patchedApk.exists()) return;
         
-        Intent i = new Intent(Intent.ACTION_VIEW);
-        i.setDataAndType(Uri.fromFile(patchedApk), "application/vnd.android.package-archive");
-        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        startActivity(i);
+        try {
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".provider", patchedApk);
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            i.setDataAndType(uri, "application/vnd.android.package-archive");
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(i);
+        } catch (Exception e) {
+            status.setText("Install failed: " + e.getMessage());
+        }
     }
 
     private void unzip(File zip, File dest) throws IOException {
@@ -297,7 +268,9 @@ public class MainActivity extends Activity {
     }
 
     private void zipDir(File root, File dir, ZipOutputStream zos) throws IOException {
-        for (File f : dir.listFiles()) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
             if (f.isDirectory()) {
                 zipDir(root, f, zos);
             } else {
@@ -313,145 +286,17 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void signApk(File apk) throws Exception {
-        // Simple v1 signature - just add META-INF files
-        // For production, use proper signing with apksigner
-        File metaInf = new File(apk.getParent(), "META-INF");
-        metaInf.mkdirs();
-        new File(metaInf, "MANIFEST.MF").createNewFile();
-        new File(metaInf, "CERT.SF").createNewFile();
-        new File(metaInf, "CERT.RSA").createNewFile();
-    }
-
     private void deleteRecursive(File f) {
         if (f.isDirectory()) {
-            for (File c : f.listFiles()) deleteRecursive(c);
+            File[] files = f.listFiles();
+            if (files != null) for (File c : files) deleteRecursive(c);
         }
         f.delete();
     }
 
-    private String fetch(String url) throws Exception {
-        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-        c.setConnectTimeout(10000);
-        BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream()));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = r.readLine()) != null) sb.append(line);
-        r.close();
-        return sb.toString();
-    }
-
-    private void applyLive() {
-        if (!checkShizuku()) return;
-        setEnabled(false);
-        progress.setVisibility(View.VISIBLE);
-        status.setText("Patching...");
-
-        new Thread(() -> {
-            try {
-                String libPath = findLib();
-                backup(libPath);
-                
-                File tmp = new File(getCacheDir(), "libil2cpp.so");
-                exec("cp " + libPath + " " + tmp.getAbsolutePath());
-                exec("chmod 666 " + tmp.getAbsolutePath());
-
-                int count = 0;
-                try (RandomAccessFile raf = new RandomAccessFile(tmp, "rw")) {
-                    for (int idx : selectedPatches) {
-                        Patch p = patches.get(idx);
-                        byte[] patch = p.patchType.equals("return_true") ? RETURN_TRUE : RETURN_FALSE;
-                        for (int off : p.offsets) {
-                            raf.seek(off);
-                            raf.write(patch);
-                            count++;
-                        }
-                    }
-                }
-
-                exec("cp " + tmp.getAbsolutePath() + " " + libPath);
-                exec("chmod 755 " + libPath);
-                tmp.delete();
-
-                int finalCount = count;
-                done("✓ Patched " + finalCount + " functions!\nRestart BitLife.");
-            } catch (Exception e) {
-                error("Error: " + e.getMessage());
-            }
-        }).start();
-    }
-
-    private void restore() {
-        if (!checkShizuku()) return;
-        setEnabled(false);
-        progress.setVisibility(View.VISIBLE);
-        status.setText("Restoring...");
-
-        new Thread(() -> {
-            try {
-                String libPath = findLib();
-                exec("cp " + libPath + ".orig " + libPath);
-                done("✓ Restored!");
-            } catch (Exception e) {
-                error("Error: " + e.getMessage());
-            }
-        }).start();
-    }
-
-    private boolean checkShizuku() {
-        if (!Shizuku.pingBinder()) { status.setText("Shizuku not running!"); return false; }
-        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
-            Shizuku.requestPermission(SHIZUKU_CODE);
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int c, String[] p, int[] r) {
-        if (c == SHIZUKU_CODE && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-            if (selectedApk != null) patchApk();
-            else applyLive();
-        }
-    }
-
-    private String findLib() throws Exception {
-        String result = execWithOutput("find /data/app -path '*com.candywriter.bitlife*/lib/arm64*' -name 'libil2cpp.so' 2>/dev/null | head -1");
-        if (result == null || result.isEmpty()) throw new Exception("libil2cpp.so not found");
-        return result.trim();
-    }
-
-    private void backup(String libPath) throws Exception {
-        exec("[ ! -f " + libPath + ".orig ] && cp " + libPath + " " + libPath + ".orig");
-    }
-
-    private String execWithOutput(String cmd) throws Exception {
-        if (shellService == null) {
-            Shizuku.bindUserService(shellServiceArgs, shellServiceConnection);
-            Thread.sleep(500); // Wait for service to bind
-        }
-        if (shellService == null) throw new Exception("Shell service not available");
-        return shellService.exec(new String[]{"sh", "-c", cmd});
-    }
-    
-    private void exec(String cmd) throws Exception {
-        String result = execWithOutput(cmd);
-        if (result.contains("ERROR") || result.contains("error")) {
-            throw new Exception("Command failed: " + cmd);
-        }
-    }
-
-    private void done(String msg) { runOnUiThread(() -> { status.setText(msg); progress.setVisibility(View.GONE); setEnabled(true); }); }
-    private void error(String msg) { runOnUiThread(() -> { status.setText(msg); progress.setVisibility(View.GONE); setEnabled(true); }); }
     private void setEnabled(boolean e) { 
         selectApkBtn.setEnabled(e);
-        if (selectedApk != null) {
-            patchApkBtn.setEnabled(e && !selectedPatches.isEmpty());
-            installBtn.setEnabled(e && patchedApk != null);
-        } else {
-            applyLiveBtn.setEnabled(e && !selectedPatches.isEmpty());
-            restoreBtn.setEnabled(e);
-        }
+        patchBtn.setEnabled(e && !selectedPatches.isEmpty());
     }
 
     static class Patch {
