@@ -1,3 +1,10 @@
+## [2.2.3](https://github.com/S0methingSomething/BitManager/compare/v2.2.2...v2.2.3) (2025-12-31)
+
+
+### Bug Fixes
+
+* proper Shizuku UserService implementation based on official demo ([985bdf9](https://github.com/S0methingSomething/BitManager/commit/985bdf973fb264520f884e734fe9d23b19a9c28d))
+
 ## [2.2.2](https://github.com/S0methingSomething/BitManager/compare/v2.2.1...v2.2.2) (2025-12-31)
 
 
