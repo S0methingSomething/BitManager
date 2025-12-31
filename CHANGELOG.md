@@ -1,3 +1,10 @@
+# [2.7.0](https://github.com/S0methingSomething/BitManager/compare/v2.6.2...v2.7.0) (2025-12-31)
+
+
+### Features
+
+* add local patches fallback to CLI ([6a32618](https://github.com/S0methingSomething/BitManager/commit/6a326189d26bcab2de144871f1cfe9c9c361dce1))
+
 ## [2.6.2](https://github.com/S0methingSomething/BitManager/compare/v2.6.1...v2.6.2) (2025-12-31)
 
 
