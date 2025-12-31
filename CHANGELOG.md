@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/S0methingSomething/BitManager/compare/v2.2.3...v2.3.0) (2025-12-31)
+
+
+### Features
+
+* make log output selectable/copyable ([08971d0](https://github.com/S0methingSomething/BitManager/commit/08971d0800dc83ec2585ff0a7efe2b544705a7ca))
+
 ## [2.2.3](https://github.com/S0methingSomething/BitManager/compare/v2.2.2...v2.2.3) (2025-12-31)
 
 
