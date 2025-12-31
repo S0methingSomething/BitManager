@@ -1,3 +1,10 @@
+## [2.1.10](https://github.com/S0methingSomething/BitManager/compare/v2.1.9...v2.1.10) (2025-12-31)
+
+
+### Bug Fixes
+
+* store resources.arsc uncompressed for Android R+ compatibility ([6d78919](https://github.com/S0methingSomething/BitManager/commit/6d78919b4b0c469bf517ea14306455cdac28e6c5))
+
 ## [2.1.9](https://github.com/S0methingSomething/BitManager/compare/v2.1.8...v2.1.9) (2025-12-31)
 
 
