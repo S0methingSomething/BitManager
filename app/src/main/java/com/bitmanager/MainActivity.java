@@ -2,12 +2,14 @@ package com.bitmanager;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.*;
 import androidx.core.content.FileProvider;
 import org.json.*;
+import rikka.shizuku.Shizuku;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -17,6 +19,7 @@ import java.security.cert.*;
 
 public class MainActivity extends Activity {
     private static final int PICK_APK = 1;
+    private static final int SHIZUKU_CODE = 2;
     private static final String PATCHES_URL = "https://raw.githubusercontent.com/S0methingSomething/BitManager/main/patches/";
     
     private TextView logView;
@@ -269,6 +272,57 @@ public class MainActivity extends Activity {
             return;
         }
         
+        // Try Shizuku first for Play Store spoofing
+        if (Shizuku.pingBinder()) {
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                installWithShizuku();
+            } else {
+                Shizuku.requestPermission(SHIZUKU_CODE);
+            }
+        } else {
+            log("⚠ Shizuku not running - using standard install");
+            log("  (App will show 'not from Play Store' warning)");
+            installStandard();
+        }
+    }
+    
+    private void installWithShizuku() {
+        log("\nInstalling via Shizuku (Play Store spoof)...");
+        new Thread(() -> {
+            try {
+                // Copy APK to world-readable location
+                File installApk = new File(getExternalFilesDir(null), "install.apk");
+                copyFile(patchedApk, installApk);
+                installApk.setReadable(true, false);
+                
+                String cmd = "pm install -i com.android.vending -r " + installApk.getAbsolutePath();
+                Process p = Shizuku.newProcess(new String[]{"sh", "-c", cmd}, null, null);
+                
+                BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                BufferedReader er = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+                String line;
+                StringBuilder out = new StringBuilder();
+                while ((line = br.readLine()) != null) out.append(line).append("\n");
+                while ((line = er.readLine()) != null) out.append(line).append("\n");
+                
+                int exit = p.waitFor();
+                installApk.delete();
+                
+                if (exit == 0 && out.toString().contains("Success")) {
+                    log("✓ Installed successfully (as Play Store app)");
+                } else {
+                    log("✗ Install failed: " + out.toString().trim());
+                    log("Falling back to standard install...");
+                    runOnUiThread(this::installStandard);
+                }
+            } catch (Exception e) {
+                log("✗ Shizuku install failed: " + e.getMessage());
+                runOnUiThread(this::installStandard);
+            }
+        }).start();
+    }
+    
+    private void installStandard() {
         log("\nLaunching installer...");
         try {
             Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".provider", patchedApk);
@@ -279,6 +333,27 @@ public class MainActivity extends Activity {
             startActivity(i);
         } catch (Exception e) {
             log("✗ Install failed: " + e.getMessage());
+        }
+    }
+    
+    private void copyFile(File src, File dst) throws IOException {
+        try (InputStream in = new FileInputStream(src);
+             OutputStream out = new FileOutputStream(dst)) {
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = in.read(buf)) > 0) out.write(buf, 0, len);
+        }
+    }
+    
+    @Override
+    public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
+        if (code == SHIZUKU_CODE) {
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                installWithShizuku();
+            } else {
+                log("⚠ Shizuku permission denied - using standard install");
+                installStandard();
+            }
         }
     }
 
