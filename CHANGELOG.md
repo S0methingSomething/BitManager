@@ -1,3 +1,10 @@
+## [2.1.5](https://github.com/S0methingSomething/BitManager/compare/v2.1.4...v2.1.5) (2025-12-31)
+
+
+### Bug Fixes
+
+* generate signing cert without Android KeyStore ([5de6b0d](https://github.com/S0methingSomething/BitManager/commit/5de6b0d6aea148b741c357089f05090f5854c0a8))
+
 ## [2.1.4](https://github.com/S0methingSomething/BitManager/compare/v2.1.3...v2.1.4) (2025-12-31)
 
 
