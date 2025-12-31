@@ -1,3 +1,10 @@
+## [2.1.7](https://github.com/S0methingSomething/BitManager/compare/v2.1.6...v2.1.7) (2025-12-31)
+
+
+### Bug Fixes
+
+* bundle pre-generated keystore, remove runtime cert generation ([da5d0bf](https://github.com/S0methingSomething/BitManager/commit/da5d0bfe8ad9507bd06d2bd178a3e3b756af3357))
+
 ## [2.1.6](https://github.com/S0methingSomething/BitManager/compare/v2.1.5...v2.1.6) (2025-12-31)
 
 
