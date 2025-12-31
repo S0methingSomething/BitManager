@@ -31,6 +31,31 @@ ReVanced-style patcher for BitLife. Patches are fetched from this repo automatic
 4. Tap Apply
 5. Restart BitLife
 
+## Building
+
+### Local Build
+```bash
+./gradlew assembleDebug
+# APK: app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Release Build
+Releases are automated via GitHub Actions. To create a release:
+
+1. **Setup signing** (first time only):
+   ```bash
+   ./scripts/generate_keystore.sh
+   ```
+   Add the output secrets to GitHub: Settings → Secrets → Actions
+
+2. **Create release**:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+   
+GitHub Actions will build and publish the signed APK automatically.
+
 ## Adding New Versions
 
 When BitLife updates:
