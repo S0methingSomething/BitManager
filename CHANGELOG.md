@@ -1,3 +1,10 @@
+## [2.1.2](https://github.com/S0methingSomething/BitManager/compare/v2.1.1...v2.1.2) (2025-12-31)
+
+
+### Bug Fixes
+
+* add installBtn to layout ([4b35027](https://github.com/S0methingSomething/BitManager/commit/4b35027590225492c7477aa84da86671b330593a))
+
 ## [2.1.1](https://github.com/S0methingSomething/BitManager/compare/v2.1.0...v2.1.1) (2025-12-31)
 
 
