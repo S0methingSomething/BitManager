@@ -4,13 +4,13 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.View;
 import android.widget.*;
 import androidx.core.content.FileProvider;
 import org.json.*;
 import java.io.*;
 import java.net.*;
-import java.security.*;
 import java.util.*;
 import java.util.zip.*;
 
@@ -21,7 +21,7 @@ public class MainActivity extends Activity {
     private TextView logView;
     private ScrollView logScroll;
     private LinearLayout patchList;
-    private Button selectApkBtn, patchBtn;
+    private Button selectApkBtn, patchBtn, installBtn;
     
     private List<Patch> patches = new ArrayList<>();
     private Set<Integer> selectedPatches = new HashSet<>();
@@ -42,9 +42,11 @@ public class MainActivity extends Activity {
         patchList = findViewById(R.id.patchList);
         selectApkBtn = findViewById(R.id.selectApkBtn);
         patchBtn = findViewById(R.id.patchBtn);
+        installBtn = findViewById(R.id.installBtn);
         
         selectApkBtn.setOnClickListener(v -> pickApk());
         patchBtn.setOnClickListener(v -> patchApk());
+        installBtn.setOnClickListener(v -> installApk());
         
         log("BitManager ready\nSelect a BitLife APK to patch");
     }
@@ -67,6 +69,7 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int req, int res, Intent data) {
         if (req == PICK_APK && res == RESULT_OK && data != null) {
             logBuilder.setLength(0);
+            installBtn.setVisibility(View.GONE);
             log("Loading APK...");
             new Thread(() -> {
                 selectedApk = copyToCache(data.getData(), "selected.apk");
@@ -186,7 +189,7 @@ public class MainActivity extends Activity {
                 log("Starting patch process...\n");
                 
                 // Extract
-                log("[1/4] Extracting APK...");
+                log("[1/3] Extracting APK...");
                 File extractDir = new File(getCacheDir(), "apk_extract");
                 deleteRecursive(extractDir);
                 extractDir.mkdirs();
@@ -194,13 +197,14 @@ public class MainActivity extends Activity {
                 log("✓ Extracted\n");
 
                 // Find lib
-                log("[2/4] Locating libil2cpp.so...");
+                log("[2/3] Locating libil2cpp.so...");
                 File libFile = findLib(extractDir);
                 if (libFile == null) throw new Exception("libil2cpp.so not found");
-                log("✓ Found: " + libFile.getName() + " (" + (libFile.length() / 1024 / 1024) + " MB)\n");
+                log("✓ Found: " + libFile.getParentFile().getName() + "/" + libFile.getName());
+                log("  Size: " + (libFile.length() / 1024 / 1024) + " MB\n");
 
                 // Patch
-                log("[3/4] Applying patches...");
+                log("Applying patches...");
                 int totalPatched = 0;
                 try (RandomAccessFile raf = new RandomAccessFile(libFile, "rw")) {
                     for (int idx : selectedPatches) {
@@ -216,26 +220,32 @@ public class MainActivity extends Activity {
                 }
                 log("✓ Patched " + totalPatched + " functions\n");
 
-                // Repack
-                log("[4/4] Repacking APK...");
-                patchedApk = new File(getCacheDir(), "BitLife_patched.apk");
+                // Repack (keep original signature by copying META-INF)
+                log("[3/3] Repacking APK...");
+                patchedApk = new File(getExternalFilesDir(null), "BitLife_v" + apkVersion + "_patched.apk");
                 zip(extractDir, patchedApk);
                 deleteRecursive(extractDir);
-                log("✓ Created: " + (patchedApk.length() / 1024 / 1024) + " MB\n");
+                log("✓ Created: " + (patchedApk.length() / 1024 / 1024) + " MB");
+                log("✓ Saved: " + patchedApk.getName() + "\n");
 
                 log("═══════════════════════════════");
                 log("✓ PATCHING COMPLETE!\n");
-                log("Note: APK is unsigned. You may need to:");
+                log("IMPORTANT:");
                 log("1. Uninstall original BitLife first");
-                log("2. Enable 'Install unknown apps'\n");
+                log("2. Tap 'Install Patched APK' below");
+                log("3. Allow install from unknown sources\n");
+                log("Output: " + patchedApk.getAbsolutePath());
                 
                 runOnUiThread(() -> {
                     selectApkBtn.setEnabled(true);
-                    installApk();
+                    patchBtn.setEnabled(true);
+                    installBtn.setVisibility(View.VISIBLE);
+                    installBtn.setEnabled(true);
                 });
                 
             } catch (Exception e) {
                 log("\n✗ FAILED: " + e.getMessage());
+                e.printStackTrace();
                 runOnUiThread(() -> {
                     patchBtn.setEnabled(true);
                     selectApkBtn.setEnabled(true);
@@ -249,12 +259,20 @@ public class MainActivity extends Activity {
         if (lib.exists()) return lib;
         lib = new File(dir, "lib/armeabi-v7a/libil2cpp.so");
         if (lib.exists()) return lib;
+        lib = new File(dir, "lib/x86_64/libil2cpp.so");
+        if (lib.exists()) return lib;
+        lib = new File(dir, "lib/x86/libil2cpp.so");
+        if (lib.exists()) return lib;
         return null;
     }
 
     private void installApk() {
-        if (patchedApk == null || !patchedApk.exists()) return;
+        if (patchedApk == null || !patchedApk.exists()) {
+            log("✗ No patched APK found");
+            return;
+        }
         
+        log("\nLaunching installer...");
         try {
             Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".provider", patchedApk);
             Intent i = new Intent(Intent.ACTION_VIEW);
@@ -264,6 +282,8 @@ public class MainActivity extends Activity {
             startActivity(i);
         } catch (Exception e) {
             log("✗ Install failed: " + e.getMessage());
+            log("Try installing manually from:");
+            log(patchedApk.getAbsolutePath());
         }
     }
 
@@ -288,6 +308,7 @@ public class MainActivity extends Activity {
 
     private void zip(File dir, File out) throws IOException {
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(out))) {
+            zos.setLevel(Deflater.BEST_SPEED);
             zipDir(dir, dir, zos);
         }
     }
@@ -300,7 +321,8 @@ public class MainActivity extends Activity {
                 zipDir(root, f, zos);
             } else {
                 String path = f.getAbsolutePath().substring(root.getAbsolutePath().length() + 1);
-                zos.putNextEntry(new ZipEntry(path));
+                ZipEntry ze = new ZipEntry(path);
+                zos.putNextEntry(ze);
                 try (FileInputStream fis = new FileInputStream(f)) {
                     byte[] buf = new byte[8192];
                     int len;
