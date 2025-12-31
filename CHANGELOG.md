@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/S0methingSomething/BitManager/compare/v2.1.11...v2.2.0) (2025-12-31)
+
+
+### Features
+
+* add Shizuku install with Play Store source spoofing ([5a24ff3](https://github.com/S0methingSomething/BitManager/commit/5a24ff3a7faeedb056ee6e26da90bb9295ebdb5c))
+
 ## [2.1.11](https://github.com/S0methingSomething/BitManager/compare/v2.1.10...v2.1.11) (2025-12-31)
 
 
