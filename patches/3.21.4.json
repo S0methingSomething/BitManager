@@ -1,0 +1,20 @@
+{
+  "patches": [
+    {
+      "name": "Bypass Signature Check",
+      "description": "Disables pairip signature verification",
+      "type": "dex",
+      "patch": "return_void",
+      "dexFile": "classes11.dex",
+      "className": "Lcom/pairip/SignatureCheck;",
+      "methodName": "verifyIntegrity"
+    },
+    {
+      "name": "Disable Store Redirect",
+      "description": "Prevents redirect to Play Store",
+      "type": "native",
+      "patch": "return_void",
+      "offsets": ["0x251A300"]
+    }
+  ]
+}
