@@ -50,8 +50,16 @@ public class Patcher {
             ApkUtils.deleteRecursive(new File(extractDir, "META-INF"));
             callback.onLog("✓ Extracted\n");
             
-            // Step 2: Apply patches
-            callback.onLog("[2/4] Applying patches...");
+            // Step 2: Remove pairip native library
+            callback.onLog("[2/5] Removing pairip protection...");
+            File pairipLib = new File(extractDir, "lib/arm64-v8a/libpairipcore.so");
+            if (pairipLib.exists()) pairipLib.delete();
+            pairipLib = new File(extractDir, "lib/armeabi-v7a/libpairipcore.so");
+            if (pairipLib.exists()) pairipLib.delete();
+            callback.onLog("✓ Removed libpairipcore.so\n");
+            
+            // Step 3: Apply patches
+            callback.onLog("[3/5] Applying patches...");
             int patchCount = 0;
             
             for (Patch patch : patches) {
@@ -81,14 +89,14 @@ public class Patcher {
             }
             callback.onLog("✓ Applied " + patchCount + " patches\n");
             
-            // Step 3: Repack
-            callback.onLog("[3/4] Repacking APK...");
+            // Step 4: Repack
+            callback.onLog("[4/5] Repacking APK...");
             unsigned = new File(context.getCacheDir(), "unsigned.apk");
             ApkUtils.repack(extractDir, unsigned);
             callback.onLog("✓ Repacked\n");
             
-            // Step 4: Sign
-            callback.onLog("[4/4] Signing APK...");
+            // Step 5: Sign
+            callback.onLog("[5/5] Signing APK...");
             File output = new File(context.getExternalFilesDir(null), 
                 "BitLife_v" + version + "_patched.apk");
             ApkUtils.sign(context, unsigned, output);
