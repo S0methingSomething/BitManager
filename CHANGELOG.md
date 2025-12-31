@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/S0methingSomething/BitManager/compare/v1.0.3...v1.0.4) (2025-12-31)
+
+
+### Bug Fixes
+
+* assign method ID to exec in AIDL ([6101294](https://github.com/S0methingSomething/BitManager/commit/6101294d7582176250fa3b32898107e5243d805f))
+
 ## [1.0.3](https://github.com/S0methingSomething/BitManager/compare/v1.0.2...v1.0.3) (2025-12-31)
 
 
