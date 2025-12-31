@@ -1,3 +1,10 @@
+## [2.5.3](https://github.com/S0methingSomething/BitManager/compare/v2.5.2...v2.5.3) (2025-12-31)
+
+
+### Bug Fixes
+
+* restore original working code, add DEX patching inline ([4463c18](https://github.com/S0methingSomething/BitManager/commit/4463c18a5bb111a5b7c79b1db854ff4703d78c74))
+
 ## [2.5.2](https://github.com/S0methingSomething/BitManager/compare/v2.5.1...v2.5.2) (2025-12-31)
 
 
