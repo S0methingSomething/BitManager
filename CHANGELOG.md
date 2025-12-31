@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/S0methingSomething/BitManager/compare/v2.1.0...v2.1.1) (2025-12-31)
+
+
+### Bug Fixes
+
+* separate patch/install buttons, save APK to accessible location, show full output path ([f65fd3f](https://github.com/S0methingSomething/BitManager/commit/f65fd3f1c0b59a83b945e0c47e39e44974674ccd))
+
 # [2.1.0](https://github.com/S0methingSomething/BitManager/compare/v2.0.0...v2.1.0) (2025-12-31)
 
 
