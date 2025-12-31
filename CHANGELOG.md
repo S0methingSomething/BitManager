@@ -1,3 +1,10 @@
+## [2.5.5](https://github.com/S0methingSomething/BitManager/compare/v2.5.4...v2.5.5) (2025-12-31)
+
+
+### Bug Fixes
+
+* enable APK alignment for Android R+ compatibility ([7d4194b](https://github.com/S0methingSomething/BitManager/commit/7d4194bd6c943e3782ebd96bb8bfefa590bf16b2))
+
 ## [2.5.4](https://github.com/S0methingSomething/BitManager/compare/v2.5.3...v2.5.4) (2025-12-31)
 
 
