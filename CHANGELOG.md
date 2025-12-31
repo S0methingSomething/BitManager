@@ -1,3 +1,10 @@
+## [2.1.6](https://github.com/S0methingSomething/BitManager/compare/v2.1.5...v2.1.6) (2025-12-31)
+
+
+### Bug Fixes
+
+* use apksig library for proper APK signing ([6f2cbcf](https://github.com/S0methingSomething/BitManager/commit/6f2cbcfc5fb5f4c93fe2cb8370d5cc7c2d83c3f4))
+
 ## [2.1.5](https://github.com/S0methingSomething/BitManager/compare/v2.1.4...v2.1.5) (2025-12-31)
 
 
