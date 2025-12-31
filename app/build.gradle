@@ -16,7 +16,7 @@ android {
         
         python {
             pip {
-                install "androguard"
+                // No external deps - pure Python implementation
             }
         }
         ndk {
