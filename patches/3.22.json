@@ -7,7 +7,7 @@
       "description": "Disables pairip signature verification",
       "type": "dex",
       "patch": "return_void",
-      "dexFile": "classes11.dex",
+      "dexFile": "classes.dex",
       "className": "Lcom/pairip/SignatureCheck;",
       "methodName": "verifyIntegrity"
     },
