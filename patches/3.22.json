@@ -3,6 +3,12 @@
   "app": "com.candywriter.bitlife",
   "patches": [
     {
+      "name": "Disable Store Redirect",
+      "description": "Prevents app from redirecting to Play Store",
+      "offsets": ["0x251A300"],
+      "patch": "return_void"
+    },
+    {
       "name": "Unlock All IAPs",
       "description": "Unlocks all in-app purchases",
       "offsets": [

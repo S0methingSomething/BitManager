@@ -39,6 +39,7 @@ public class MainActivity extends Activity {
 
     private static final byte[] RETURN_TRUE = {0x20, 0x00, (byte)0x80, 0x52, (byte)0xC0, 0x03, 0x5F, (byte)0xD6};
     private static final byte[] RETURN_FALSE = {0x00, 0x00, (byte)0x80, 0x52, (byte)0xC0, 0x03, 0x5F, (byte)0xD6};
+    private static final byte[] RETURN_VOID = {(byte)0xC0, 0x03, 0x5F, (byte)0xD6}; // ret
 
     // Shizuku UserService
     private IShellService shellService;
@@ -261,7 +262,13 @@ public class MainActivity extends Activity {
                 try (RandomAccessFile raf = new RandomAccessFile(libFile, "rw")) {
                     for (int idx : selectedPatches) {
                         Patch p = patches.get(idx);
-                        byte[] patch = p.patchType.equals("return_true") ? RETURN_TRUE : RETURN_FALSE;
+                        byte[] patch;
+                        switch (p.patchType) {
+                            case "return_true": patch = RETURN_TRUE; break;
+                            case "return_false": patch = RETURN_FALSE; break;
+                            case "return_void": patch = RETURN_VOID; break;
+                            default: patch = RETURN_TRUE; break;
+                        }
                         for (int off : p.offsets) {
                             raf.seek(off);
                             raf.write(patch);
