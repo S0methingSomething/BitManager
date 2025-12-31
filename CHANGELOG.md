@@ -1,3 +1,10 @@
+## [2.5.4](https://github.com/S0methingSomething/BitManager/compare/v2.5.3...v2.5.4) (2025-12-31)
+
+
+### Bug Fixes
+
+* add all patches including IAP unlocks, BitPass, items, streaks ([0868f79](https://github.com/S0methingSomething/BitManager/commit/0868f79831a0d96b8faa7f78bbde9f8bae07e6b5))
+
 ## [2.5.3](https://github.com/S0methingSomething/BitManager/compare/v2.5.2...v2.5.3) (2025-12-31)
 
 
