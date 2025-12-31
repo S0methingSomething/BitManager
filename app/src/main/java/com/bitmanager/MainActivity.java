@@ -367,9 +367,7 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             try {
                 String libPath = findLib();
-                Process p = Shizuku.newProcess(new String[]{"sh", "-c", "cp " + libPath + ".orig " + libPath}, null, null);
-                p.waitFor();
-                if (p.exitValue() != 0) throw new Exception("No backup found");
+                exec("cp " + libPath + ".orig " + libPath);
                 done("✓ Restored!");
             } catch (Exception e) {
                 error("Error: " + e.getMessage());
@@ -395,23 +393,28 @@ public class MainActivity extends Activity {
     }
 
     private String findLib() throws Exception {
-        Process p = Shizuku.newProcess(new String[]{"sh", "-c",
-            "find /data/app -path '*com.candywriter.bitlife*/lib/arm64*' -name 'libil2cpp.so' 2>/dev/null | head -1"}, null, null);
-        BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-        String path = r.readLine();
-        r.close();
-        if (path == null || path.isEmpty()) throw new Exception("libil2cpp.so not found");
-        return path;
+        String result = execWithOutput("find /data/app -path '*com.candywriter.bitlife*/lib/arm64*' -name 'libil2cpp.so' 2>/dev/null | head -1");
+        if (result == null || result.isEmpty()) throw new Exception("libil2cpp.so not found");
+        return result.trim();
     }
 
     private void backup(String libPath) throws Exception {
-        Shizuku.newProcess(new String[]{"sh", "-c", "[ ! -f " + libPath + ".orig ] && cp " + libPath + " " + libPath + ".orig"}, null, null).waitFor();
+        exec("[ ! -f " + libPath + ".orig ] && cp " + libPath + " " + libPath + ".orig");
     }
 
     private void exec(String cmd) throws Exception {
-        Process p = Shizuku.newProcess(new String[]{"sh", "-c", cmd}, null, null);
+        Shizuku.ShizukuRemoteProcess p = Shizuku.newProcess(new String[]{"sh", "-c", cmd}, null, null);
         p.waitFor();
         if (p.exitValue() != 0) throw new Exception("Failed: " + cmd);
+    }
+
+    private String execWithOutput(String cmd) throws Exception {
+        Shizuku.ShizukuRemoteProcess p = Shizuku.newProcess(new String[]{"sh", "-c", cmd}, null, null);
+        BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+        String result = r.readLine();
+        r.close();
+        p.waitFor();
+        return result;
     }
 
     private void done(String msg) { runOnUiThread(() -> { status.setText(msg); progress.setVisibility(View.GONE); setEnabled(true); }); }
