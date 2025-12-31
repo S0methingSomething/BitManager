@@ -335,8 +335,8 @@ public class MainActivity extends Activity {
 
     private void signApk(File input, File output) throws Exception {
         // Load bundled keystore from assets
-        KeyStore ks = KeyStore.getInstance("JKS");
-        try (InputStream is = getAssets().open("debug.keystore")) {
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        try (InputStream is = getAssets().open("debug.p12")) {
             ks.load(is, "android".toCharArray());
         }
         PrivateKey privateKey = (PrivateKey) ks.getKey("key", "android".toCharArray());
