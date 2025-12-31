@@ -1,3 +1,10 @@
+## [2.2.2](https://github.com/S0methingSomething/BitManager/compare/v2.2.1...v2.2.2) (2025-12-31)
+
+
+### Bug Fixes
+
+* use Shizuku UserService instead of deprecated newProcess ([d2723b2](https://github.com/S0methingSomething/BitManager/commit/d2723b2d1fc69ae04e65eb850927ca612b7f24f1))
+
 ## [2.2.1](https://github.com/S0methingSomething/BitManager/compare/v2.2.0...v2.2.1) (2025-12-31)
 
 
