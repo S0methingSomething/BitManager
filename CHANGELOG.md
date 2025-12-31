@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/S0methingSomething/BitManager/compare/v1.0.2...v1.0.3) (2025-12-31)
+
+
+### Bug Fixes
+
+* enable AIDL and BuildConfig in build.gradle ([012bab0](https://github.com/S0methingSomething/BitManager/commit/012bab0c0dea445c8bebc8e14967f82a9da7c3a9))
+
 ## [1.0.2](https://github.com/S0methingSomething/BitManager/compare/v1.0.1...v1.0.2) (2025-12-31)
 
 
