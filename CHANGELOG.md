@@ -1,3 +1,10 @@
+## [2.5.2](https://github.com/S0methingSomething/BitManager/compare/v2.5.1...v2.5.2) (2025-12-31)
+
+
+### Bug Fixes
+
+* improve version detection, add fallback to 3.21.4 patches ([373a51d](https://github.com/S0methingSomething/BitManager/commit/373a51db0f44676d66797f19af5ec44c49adb153))
+
 ## [2.5.1](https://github.com/S0methingSomething/BitManager/compare/v2.5.0...v2.5.1) (2025-12-31)
 
 
