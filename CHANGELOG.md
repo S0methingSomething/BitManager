@@ -1,3 +1,10 @@
+## [2.8.1](https://github.com/S0methingSomething/BitManager/compare/v2.8.0...v2.8.1) (2025-12-31)
+
+
+### Bug Fixes
+
+* pure Python patcher, no external deps ([8c6b012](https://github.com/S0methingSomething/BitManager/commit/8c6b012ee6e4afe0d8bbbc878de2a41c6fb3ad7e))
+
 # [2.8.0](https://github.com/S0methingSomething/BitManager/compare/v2.7.0...v2.8.0) (2025-12-31)
 
 
