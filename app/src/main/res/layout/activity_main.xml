@@ -56,8 +56,18 @@
         android:layout_marginTop="12dp"
         android:enabled="false"
         android:visibility="gone"
-        android:text="Patch &amp; Install"
+        android:text="Patch APK"
         android:backgroundTint="#03DAC5"
         android:textColor="#000000" />
+
+    <Button
+        android:id="@+id/installBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:enabled="false"
+        android:visibility="gone"
+        android:text="Install Patched APK"
+        android:backgroundTint="#6200EE" />
 
 </LinearLayout>
