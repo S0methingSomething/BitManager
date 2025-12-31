@@ -11,8 +11,8 @@ android {
         applicationId "com.bitmanager"
         minSdk 24
         targetSdk 34
-        versionCode 20602
-        versionName "2.6.2"
+        versionCode 20800
+        versionName "2.8.0"
         
         python {
             pip {

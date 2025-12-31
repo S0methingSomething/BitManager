@@ -1,3 +1,10 @@
+# [2.8.0](https://github.com/S0methingSomething/BitManager/compare/v2.7.0...v2.8.0) (2025-12-31)
+
+
+### Features
+
+* use Python/Chaquopy backend for patching ([4ab174b](https://github.com/S0methingSomething/BitManager/commit/4ab174b4135b7ce5a524529785e2ce4fb3cfe07a))
+
 # [2.7.0](https://github.com/S0methingSomething/BitManager/compare/v2.6.2...v2.7.0) (2025-12-31)
 
 
