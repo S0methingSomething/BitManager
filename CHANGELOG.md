@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/S0methingSomething/BitManager/compare/v2.4.0...v2.5.0) (2025-12-31)
+
+
+### Features
+
+* revamp architecture with DEX patching support ([f1fd411](https://github.com/S0methingSomething/BitManager/commit/f1fd411a6d4f84e590746a9a08fdc11a4e02d3a6))
+
 # [2.4.0](https://github.com/S0methingSomething/BitManager/compare/v2.3.1...v2.4.0) (2025-12-31)
 
 
