@@ -100,11 +100,34 @@ def find_method_code_offset(dex_data, class_name, method_name):
     return None
 
 def patch_dex(dex_path, patch):
-    """Apply DEX patch - insert return-void at method start"""
+    """Apply DEX patch using pre-computed offset"""
     log(f"Patching DEX: {patch['name']}")
     
-    class_name = patch['className']
-    method_name = patch['methodName']
+    # Use pre-computed offset if available
+    if 'offset' in patch and 'bytes' in patch:
+        offset = int(patch['offset'].replace('0x', ''), 16)
+        patch_bytes = bytes.fromhex(patch['bytes'])
+        
+        with open(dex_path, 'r+b') as f:
+            f.seek(offset)
+            f.write(patch_bytes)
+        
+        # Update checksums
+        with open(dex_path, 'rb') as f:
+            dex_data = f.read()
+        dex_data = update_dex_checksums(dex_data)
+        with open(dex_path, 'wb') as f:
+            f.write(dex_data)
+        
+        ok(f"Patched at offset 0x{offset:x}")
+        return True
+    
+    # Fallback to androguard for finding method
+    class_name = patch.get('className')
+    method_name = patch.get('methodName')
+    if not class_name or not method_name:
+        err("No offset or className/methodName in patch")
+        return False
     
     # Try androguard first
     try:
@@ -302,6 +325,22 @@ def main():
     try:
         # Extract
         extract_apk(input_apk, extract_dir)
+        
+        # Add CoreX hook for pairip bypass
+        log("Adding pairip bypass hook...")
+        corex_src = Path(__file__).parent.parent / "app/src/main/assets/lib_Pairip_CoreX.so"
+        if not corex_src.exists():
+            try:
+                import RKPairip
+                corex_src = Path(RKPairip.__file__).parent / "Utils/Files/lib_Pairip_CoreX.so"
+            except: pass
+        
+        lib_dir = extract_dir / "lib/arm64-v8a"
+        if lib_dir.exists() and corex_src.exists():
+            shutil.copy(corex_src, lib_dir / "lib_Pairip_CoreX.so")
+            ok("Added CoreX hook")
+        else:
+            log("⚠ CoreX hook not found or no arm64 lib dir")
         
         # Apply patches
         for patch in patches:
