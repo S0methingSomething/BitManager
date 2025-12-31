@@ -1,10 +1,13 @@
 package com.bitmanager;
 
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.View;
 import android.widget.*;
 import rikka.shizuku.Shizuku;
@@ -29,6 +32,26 @@ public class MainActivity extends Activity {
     private String bitlifeVersion;
     private File selectedApk;
     private File patchedApk;
+
+    private IShellService shellService;
+    private Shizuku.UserServiceArgs shellServiceArgs = new Shizuku.UserServiceArgs(
+        new ComponentName("com.bitmanager", ShellService.class.getName()))
+        .daemon(false)
+        .processNameSuffix("shell")
+        .debuggable(BuildConfig.DEBUG)
+        .version(1);
+    
+    private ServiceConnection shellServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder binder) {
+            shellService = IShellService.Stub.asInterface(binder);
+        }
+        
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            shellService = null;
+        }
+    };
 
     // ARM64 patches
     private static final byte[] RETURN_TRUE = {0x20, 0x00, (byte)0x80, 0x52, (byte)0xC0, 0x03, 0x5F, (byte)0xD6};
@@ -402,19 +425,20 @@ public class MainActivity extends Activity {
         exec("[ ! -f " + libPath + ".orig ] && cp " + libPath + " " + libPath + ".orig");
     }
 
-    private void exec(String cmd) throws Exception {
-        Shizuku.ShizukuRemoteProcess p = Shizuku.newProcess(new String[]{"sh", "-c", cmd}, null, null);
-        p.waitFor();
-        if (p.exitValue() != 0) throw new Exception("Failed: " + cmd);
-    }
-
     private String execWithOutput(String cmd) throws Exception {
-        Shizuku.ShizukuRemoteProcess p = Shizuku.newProcess(new String[]{"sh", "-c", cmd}, null, null);
-        BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-        String result = r.readLine();
-        r.close();
-        p.waitFor();
-        return result;
+        if (shellService == null) {
+            Shizuku.bindUserService(shellServiceArgs, shellServiceConnection);
+            Thread.sleep(500); // Wait for service to bind
+        }
+        if (shellService == null) throw new Exception("Shell service not available");
+        return shellService.exec(new String[]{"sh", "-c", cmd});
+    }
+    
+    private void exec(String cmd) throws Exception {
+        String result = execWithOutput(cmd);
+        if (result.contains("ERROR") || result.contains("error")) {
+            throw new Exception("Command failed: " + cmd);
+        }
     }
 
     private void done(String msg) { runOnUiThread(() -> { status.setText(msg); progress.setVisibility(View.GONE); setEnabled(true); }); }
