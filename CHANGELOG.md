@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/S0methingSomething/BitManager/compare/v2.0.0...v2.1.0) (2025-12-31)
+
+
+### Features
+
+* ReVanced-style UI with live log output ([ad05a33](https://github.com/S0methingSomething/BitManager/commit/ad05a331837984a81870e68031b07e0de7d76551))
+
 # [2.0.0](https://github.com/S0methingSomething/BitManager/compare/v1.0.4...v2.0.0) (2025-12-31)
 
 
