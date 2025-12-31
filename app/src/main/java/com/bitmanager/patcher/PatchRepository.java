@@ -27,17 +27,17 @@ public class PatchRepository {
             patch.name = p.getString("name");
             patch.description = p.optString("description", "");
             patch.type = p.optString("type", "native");
-            patch.patchType = p.getString("patch");
+            patch.patch = p.optString("patch", "return_void");
             
             if (patch.isDex()) {
                 patch.dexFile = p.getString("dexFile");
-                patch.className = p.getString("className");
-                patch.methodName = p.getString("methodName");
+                patch.offset = p.getString("offset");
+                patch.bytes = p.getString("bytes");
             } else {
                 JSONArray offsets = p.getJSONArray("offsets");
-                patch.offsets = new long[offsets.length()];
+                patch.offsets = new String[offsets.length()];
                 for (int j = 0; j < offsets.length(); j++) {
-                    patch.offsets[j] = Long.decode(offsets.getString(j));
+                    patch.offsets[j] = offsets.getString(j);
                 }
             }
             patches.add(patch);
