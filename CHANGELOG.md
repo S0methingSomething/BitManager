@@ -1,3 +1,10 @@
+## [2.1.8](https://github.com/S0methingSomething/BitManager/compare/v2.1.7...v2.1.8) (2025-12-31)
+
+
+### Bug Fixes
+
+* remove Shizuku provider from manifest ([342f4b6](https://github.com/S0methingSomething/BitManager/commit/342f4b6f535d0b19d54307030f47a94e3546c014))
+
 ## [2.1.7](https://github.com/S0methingSomething/BitManager/compare/v2.1.6...v2.1.7) (2025-12-31)
 
 
