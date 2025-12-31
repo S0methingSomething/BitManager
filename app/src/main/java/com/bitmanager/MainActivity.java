@@ -25,32 +25,6 @@ public class MainActivity extends Activity {
     private static final int SHIZUKU_CODE = 2;
     private static final String PATCHES_URL = "https://raw.githubusercontent.com/S0methingSomething/BitManager/main/patches/";
     
-    private IShellService shellService;
-    private final ServiceConnection shellConn = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder binder) {
-            shellService = IShellService.Stub.asInterface(binder);
-            log("Shizuku service connected");
-            doShizukuInstall();
-        }
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            shellService = null;
-        }
-    };
-    
-    private final Shizuku.UserServiceArgs shellArgs = new Shizuku.UserServiceArgs(
-        new ComponentName(BuildConfig.APPLICATION_ID, ShellService.class.getName()))
-        .daemon(false)
-        .processNameSuffix("shell")
-        .debuggable(BuildConfig.DEBUG)
-        .version(BuildConfig.VERSION_CODE);
-
-public class MainActivity extends Activity {
-    private static final int PICK_APK = 1;
-    private static final int SHIZUKU_CODE = 2;
-    private static final String PATCHES_URL = "https://raw.githubusercontent.com/S0methingSomething/BitManager/main/patches/";
-    
     private TextView logView;
     private ScrollView logScroll;
     private LinearLayout patchList;
@@ -65,6 +39,35 @@ public class MainActivity extends Activity {
 
     private static final byte[] RETURN_TRUE = {0x20, 0x00, (byte)0x80, 0x52, (byte)0xC0, 0x03, 0x5F, (byte)0xD6};
     private static final byte[] RETURN_FALSE = {0x00, 0x00, (byte)0x80, 0x52, (byte)0xC0, 0x03, 0x5F, (byte)0xD6};
+
+    // Shizuku UserService
+    private IShellService shellService;
+    private final ServiceConnection shellConn = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder binder) {
+            shellService = IShellService.Stub.asInterface(binder);
+            log("Shizuku service connected");
+            doShizukuInstall();
+        }
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            shellService = null;
+            log("Shizuku service disconnected");
+        }
+    };
+    
+    private Shizuku.UserServiceArgs shellArgs;
+    
+    private final Shizuku.OnRequestPermissionResultListener PERMISSION_LISTENER = (requestCode, grantResult) -> {
+        if (requestCode == SHIZUKU_CODE) {
+            if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                installWithShizuku();
+            } else {
+                log("⚠ Shizuku permission denied - using standard install");
+                installStandard();
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle b) {
@@ -81,7 +84,24 @@ public class MainActivity extends Activity {
         patchBtn.setOnClickListener(v -> patchApk());
         installBtn.setOnClickListener(v -> installApk());
         
+        // Initialize Shizuku args
+        shellArgs = new Shizuku.UserServiceArgs(
+            new ComponentName(BuildConfig.APPLICATION_ID, ShellService.class.getName()))
+            .daemon(false)
+            .processNameSuffix("shell")
+            .debuggable(BuildConfig.DEBUG)
+            .version(BuildConfig.VERSION_CODE);
+        
+        // Add Shizuku permission listener
+        Shizuku.addRequestPermissionResultListener(PERMISSION_LISTENER);
+        
         log("BitManager ready\nSelect a BitLife APK to patch");
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Shizuku.removeRequestPermissionResultListener(PERMISSION_LISTENER);
     }
 
     private void log(String msg) {
@@ -221,25 +241,20 @@ public class MainActivity extends Activity {
                 log("═══════════════════════════════");
                 log("Starting patch process...\n");
                 
-                // Extract
                 log("[1/4] Extracting APK...");
                 File extractDir = new File(getCacheDir(), "apk_extract");
                 deleteRecursive(extractDir);
                 extractDir.mkdirs();
                 unzip(selectedApk, extractDir);
-                
-                // Remove old signature
                 deleteRecursive(new File(extractDir, "META-INF"));
                 log("✓ Extracted\n");
 
-                // Find lib
                 log("[2/4] Locating libil2cpp.so...");
                 File libFile = findLib(extractDir);
                 if (libFile == null) throw new Exception("libil2cpp.so not found");
                 log("✓ Found: " + libFile.getParentFile().getName() + "/" + libFile.getName());
                 log("  Size: " + (libFile.length() / 1024 / 1024) + " MB\n");
 
-                // Patch
                 log("[3/4] Applying patches...");
                 int totalPatched = 0;
                 try (RandomAccessFile raf = new RandomAccessFile(libFile, "rw")) {
@@ -256,7 +271,6 @@ public class MainActivity extends Activity {
                 }
                 log("✓ Patched " + totalPatched + " functions\n");
 
-                // Repack & Sign
                 log("[4/4] Repacking & signing...");
                 patchedApk = new File(getExternalFilesDir(null), "BitLife_v" + apkVersion + "_patched.apk");
                 zipAndSign(extractDir, patchedApk);
@@ -302,21 +316,31 @@ public class MainActivity extends Activity {
         }
         
         // Try Shizuku first for Play Store spoofing
-        if (Shizuku.pingBinder()) {
-            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                installWithShizuku();
+        try {
+            if (Shizuku.pingBinder()) {
+                log("Shizuku detected");
+                if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                    installWithShizuku();
+                } else if (Shizuku.shouldShowRequestPermissionRationale()) {
+                    log("⚠ Shizuku permission denied previously");
+                    installStandard();
+                } else {
+                    log("Requesting Shizuku permission...");
+                    Shizuku.requestPermission(SHIZUKU_CODE);
+                }
             } else {
-                Shizuku.requestPermission(SHIZUKU_CODE);
+                log("⚠ Shizuku not running - using standard install");
+                log("  (App will show 'not from Play Store' warning)");
+                installStandard();
             }
-        } else {
-            log("⚠ Shizuku not running - using standard install");
-            log("  (App will show 'not from Play Store' warning)");
+        } catch (Exception e) {
+            log("⚠ Shizuku error: " + e.getMessage());
             installStandard();
         }
     }
     
     private void installWithShizuku() {
-        log("\nConnecting to Shizuku service...");
+        log("\nBinding Shizuku UserService...");
         try {
             Shizuku.bindUserService(shellArgs, shellConn);
         } catch (Exception e) {
@@ -329,7 +353,6 @@ public class MainActivity extends Activity {
         log("Installing via Shizuku (Play Store spoof)...");
         new Thread(() -> {
             try {
-                // Copy APK to world-readable location
                 File installApk = new File(getExternalFilesDir(null), "install.apk");
                 log("Copying APK to " + installApk.getAbsolutePath());
                 copyFile(patchedApk, installApk);
@@ -344,12 +367,15 @@ public class MainActivity extends Activity {
                 }
                 
                 installApk.delete();
-                Shizuku.unbindUserService(shellArgs, shellConn, true);
+                
+                try {
+                    Shizuku.unbindUserService(shellArgs, shellConn, true);
+                } catch (Exception ignored) {}
                 
                 if (result.contains("Success")) {
-                    log("✓ Installed successfully (as Play Store app)");
+                    log("\n✓ Installed successfully (as Play Store app)");
                 } else {
-                    log("Falling back to standard install...");
+                    log("\nFalling back to standard install...");
                     runOnUiThread(this::installStandard);
                 }
             } catch (Exception e) {
@@ -360,7 +386,7 @@ public class MainActivity extends Activity {
     }
     
     private void installStandard() {
-        log("\nLaunching installer...");
+        log("\nLaunching standard installer...");
         try {
             Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".provider", patchedApk);
             Intent i = new Intent(Intent.ACTION_VIEW);
@@ -379,18 +405,6 @@ public class MainActivity extends Activity {
             byte[] buf = new byte[8192];
             int len;
             while ((len = in.read(buf)) > 0) out.write(buf, 0, len);
-        }
-    }
-    
-    @Override
-    public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
-        if (code == SHIZUKU_CODE) {
-            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                installWithShizuku();
-            } else {
-                log("⚠ Shizuku permission denied - using standard install");
-                installStandard();
-            }
         }
     }
 
@@ -414,13 +428,10 @@ public class MainActivity extends Activity {
     }
 
     private void zipAndSign(File dir, File out) throws Exception {
-        // Create unsigned APK first
         File unsigned = new File(getCacheDir(), "unsigned.apk");
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(unsigned))) {
             zipDir(dir, dir, zos);
         }
-        
-        // Sign it
         signApk(unsigned, out);
         unsigned.delete();
     }
@@ -436,8 +447,6 @@ public class MainActivity extends Activity {
                 String path = f.getAbsolutePath().substring(root.getAbsolutePath().length() + 1);
                 ZipEntry entry = new ZipEntry(path);
                 
-                // Android R+ requires resources.arsc uncompressed and 4-byte aligned
-                // Also store .so files and .png uncompressed for performance
                 if (path.equals("resources.arsc") || path.endsWith(".so") || path.endsWith(".png") || path.endsWith(".arsc")) {
                     entry.setMethod(ZipEntry.STORED);
                     entry.setSize(f.length());
@@ -468,7 +477,6 @@ public class MainActivity extends Activity {
     }
 
     private void signApk(File input, File output) throws Exception {
-        // Load bundled keystore from assets
         KeyStore ks = KeyStore.getInstance("PKCS12");
         try (InputStream is = getAssets().open("debug.p12")) {
             ks.load(is, "android".toCharArray());
