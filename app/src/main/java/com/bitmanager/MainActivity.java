@@ -74,6 +74,7 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         setContentView(R.layout.activity_main);
         logView = findViewById(R.id.logView);
+        logView.setTextIsSelectable(true);
         logScroll = findViewById(R.id.logScroll);
         patchList = findViewById(R.id.patchList);
         selectApkBtn = findViewById(R.id.selectApkBtn);
