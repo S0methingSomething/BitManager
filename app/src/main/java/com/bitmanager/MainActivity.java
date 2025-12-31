@@ -334,81 +334,26 @@ public class MainActivity extends Activity {
     }
 
     private void signApk(File input, File output) throws Exception {
-        KeyStore ks = getOrCreateKeyStore();
+        // Load bundled keystore from assets
+        KeyStore ks = KeyStore.getInstance("JKS");
+        try (InputStream is = getAssets().open("debug.keystore")) {
+            ks.load(is, "android".toCharArray());
+        }
         PrivateKey privateKey = (PrivateKey) ks.getKey("key", "android".toCharArray());
         X509Certificate cert = (X509Certificate) ks.getCertificate("key");
         
-        // Use apksig library
         com.android.apksig.ApkSigner.SignerConfig signerConfig = 
             new com.android.apksig.ApkSigner.SignerConfig.Builder(
-                "BitManager", 
-                privateKey, 
-                java.util.Collections.singletonList(cert))
+                "BitManager", privateKey, java.util.Collections.singletonList(cert))
             .build();
         
-        com.android.apksig.ApkSigner signer = new com.android.apksig.ApkSigner.Builder(
-            java.util.Collections.singletonList(signerConfig))
+        new com.android.apksig.ApkSigner.Builder(java.util.Collections.singletonList(signerConfig))
             .setInputApk(input)
             .setOutputApk(output)
             .setV1SigningEnabled(true)
             .setV2SigningEnabled(true)
-            .build();
-        
-        signer.sign();
-    }
-    
-    private KeyStore getOrCreateKeyStore() throws Exception {
-        File ksFile = new File(getFilesDir(), "bitmanager.bks");
-        KeyStore ks = KeyStore.getInstance("BKS");
-        
-        if (ksFile.exists()) {
-            try (FileInputStream fis = new FileInputStream(ksFile)) {
-                ks.load(fis, "android".toCharArray());
-                return ks;
-            } catch (Exception e) {
-                ksFile.delete();
-            }
-        }
-        
-        // Generate new key pair
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-        kpg.initialize(2048);
-        KeyPair kp = kpg.generateKeyPair();
-        
-        // Generate self-signed certificate using Android KeyStore (just for cert generation)
-        android.security.keystore.KeyGenParameterSpec spec = 
-            new android.security.keystore.KeyGenParameterSpec.Builder("bitmanager_temp",
-                android.security.keystore.KeyProperties.PURPOSE_SIGN)
-            .setDigests(android.security.keystore.KeyProperties.DIGEST_SHA256)
-            .setSignaturePaddings(android.security.keystore.KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
-            .setCertificateSubject(new javax.security.auth.x500.X500Principal("CN=BitManager"))
-            .setCertificateSerialNumber(java.math.BigInteger.valueOf(System.currentTimeMillis()))
-            .setCertificateNotBefore(new Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000L))
-            .setCertificateNotAfter(new Date(System.currentTimeMillis() + 25L * 365 * 24 * 60 * 60 * 1000L))
-            .build();
-        
-        KeyPairGenerator androidKpg = KeyPairGenerator.getInstance(
-            android.security.keystore.KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore");
-        androidKpg.initialize(spec);
-        androidKpg.generateKeyPair();
-        
-        KeyStore androidKs = KeyStore.getInstance("AndroidKeyStore");
-        androidKs.load(null);
-        X509Certificate cert = (X509Certificate) androidKs.getCertificate("bitmanager_temp");
-        
-        // Store our own key with the generated cert
-        ks.load(null, "android".toCharArray());
-        ks.setKeyEntry("key", kp.getPrivate(), "android".toCharArray(), 
-            new java.security.cert.Certificate[]{cert});
-        
-        try (FileOutputStream fos = new FileOutputStream(ksFile)) {
-            ks.store(fos, "android".toCharArray());
-        }
-        
-        // Cleanup temp key
-        androidKs.deleteEntry("bitmanager_temp");
-        
-        return ks;
+            .build()
+            .sign();
     }
 
     private void deleteRecursive(File f) {
