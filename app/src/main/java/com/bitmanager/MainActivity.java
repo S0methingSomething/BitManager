@@ -354,12 +354,18 @@ public class MainActivity extends Activity {
         log("Installing via Shizuku (Play Store spoof)...");
         new Thread(() -> {
             try {
-                File installApk = new File(getExternalFilesDir(null), "install.apk");
-                log("Copying APK to " + installApk.getAbsolutePath());
-                copyFile(patchedApk, installApk);
-                installApk.setReadable(true, false);
+                // Copy APK to /data/local/tmp/ which system_server can access
+                String tmpPath = "/data/local/tmp/bitmanager_install.apk";
+                log("Copying APK to " + tmpPath);
                 
-                String cmd = "pm install -i com.android.vending -r " + installApk.getAbsolutePath();
+                // Use cat via shell to copy file to /data/local/tmp
+                String copyCmd = "cat > " + tmpPath;
+                // First write the file using dd
+                File src = patchedApk;
+                String copyResult = shellService.exec("cp " + patchedApk.getAbsolutePath() + " " + tmpPath + " 2>&1 || cat " + patchedApk.getAbsolutePath() + " > " + tmpPath);
+                log("Copy: " + copyResult.trim());
+                
+                String cmd = "pm install -i com.android.vending -r " + tmpPath;
                 log("Running: " + cmd);
                 
                 String result = shellService.exec(cmd);
@@ -367,7 +373,8 @@ public class MainActivity extends Activity {
                     log(line);
                 }
                 
-                installApk.delete();
+                // Cleanup
+                shellService.exec("rm " + tmpPath);
                 
                 try {
                     Shizuku.unbindUserService(shellArgs, shellConn, true);
