@@ -1,3 +1,10 @@
+## [2.6.2](https://github.com/S0methingSomething/BitManager/compare/v2.6.1...v2.6.2) (2025-12-31)
+
+
+### Bug Fixes
+
+* pairip is in classes.dex for 3.22 ([47be263](https://github.com/S0methingSomething/BitManager/commit/47be263ae4a851846f1a4c322e5bfaf4f2916b87))
+
 ## [2.6.1](https://github.com/S0methingSomething/BitManager/compare/v2.6.0...v2.6.1) (2025-12-31)
 
 
