@@ -1,3 +1,10 @@
+## [2.1.4](https://github.com/S0methingSomething/BitManager/compare/v2.1.3...v2.1.4) (2025-12-31)
+
+
+### Bug Fixes
+
+* disambiguate Certificate class ([0623c11](https://github.com/S0methingSomething/BitManager/commit/0623c111cd695455ed4871c5af3734ebdc7c9822))
+
 ## [2.1.3](https://github.com/S0methingSomething/BitManager/compare/v2.1.2...v2.1.3) (2025-12-31)
 
 
