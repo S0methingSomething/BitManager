@@ -3,14 +3,25 @@
   "app": "com.candywriter.bitlife",
   "patches": [
     {
+      "name": "Bypass Signature Check",
+      "description": "Disables pairip signature verification",
+      "type": "dex",
+      "patch": "return_void",
+      "dexFile": "classes11.dex",
+      "className": "Lcom/pairip/SignatureCheck;",
+      "methodName": "verifyIntegrity"
+    },
+    {
       "name": "Disable Store Redirect",
       "description": "Prevents app from redirecting to Play Store",
+      "type": "native",
       "offsets": ["0x251A300"],
       "patch": "return_void"
     },
     {
       "name": "Unlock All IAPs",
-      "description": "Unlocks all in-app purchases",
+      "description": "Unlocks all in-app purchases (Bitizenship, God Mode, Time Machine, etc.)",
+      "type": "native",
       "offsets": [
         "0x285AD24", "0x285AD38", "0x285AD4C", "0x285AD60", "0x2864DE8", "0x2864DFC",
         "0x2864E10", "0x2864E24", "0x2864E38", "0x2864E4C", "0x2864EB0", "0x2864EC4",
@@ -34,18 +45,21 @@
     {
       "name": "Unlock BitPass",
       "description": "Unlocks BitPass subscription",
+      "type": "native",
       "offsets": ["0x28D0CA8"],
       "patch": "return_true"
     },
     {
       "name": "Unlock Items",
       "description": "Use any item",
+      "type": "native",
       "offsets": ["0x2916AD0", "0x2916AE4"],
       "patch": "return_true"
     },
     {
       "name": "No Streak Loss",
       "description": "Never lose streaks",
+      "type": "native",
       "offsets": ["0x2895160"],
       "patch": "return_false"
     }
