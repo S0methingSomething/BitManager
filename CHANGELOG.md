@@ -1,3 +1,10 @@
+## [2.2.1](https://github.com/S0methingSomething/BitManager/compare/v2.2.0...v2.2.1) (2025-12-31)
+
+
+### Bug Fixes
+
+* show detailed Shizuku install output ([977ddf2](https://github.com/S0methingSomething/BitManager/commit/977ddf259153b1a61818c3dd9040fe91444ccec0))
+
 # [2.2.0](https://github.com/S0methingSomething/BitManager/compare/v2.1.11...v2.2.0) (2025-12-31)
 
 
