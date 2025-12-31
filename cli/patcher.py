@@ -44,7 +44,14 @@ def get_version(apk_path):
     return None
 
 def fetch_patches(version):
-    """Fetch patches JSON from GitHub"""
+    """Fetch patches JSON from GitHub or local file"""
+    # Try local first
+    local = f"/workspaces/BitManager/patches/{version}.json"
+    if os.path.exists(local):
+        log(f"Using local patches: {local}")
+        with open(local) as f:
+            return json.load(f)
+    
     url = PATCHES_URL.format(version)
     log(f"Fetching patches from {url}")
     with urllib.request.urlopen(url) as r:
