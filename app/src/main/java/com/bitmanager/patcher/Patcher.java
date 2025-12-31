@@ -42,7 +42,7 @@ public class Patcher {
             callback.onLog("Starting patch process...\n");
             
             // Step 1: Extract
-            callback.onLog("[1/4] Extracting APK...");
+            callback.onLog("[1/5] Extracting APK...");
             extractDir = new File(context.getCacheDir(), "apk_extract");
             ApkUtils.deleteRecursive(extractDir);
             extractDir.mkdirs();
@@ -50,13 +50,21 @@ public class Patcher {
             ApkUtils.deleteRecursive(new File(extractDir, "META-INF"));
             callback.onLog("✓ Extracted\n");
             
-            // Step 2: Remove pairip native library
-            callback.onLog("[2/5] Removing pairip protection...");
-            File pairipLib = new File(extractDir, "lib/arm64-v8a/libpairipcore.so");
-            if (pairipLib.exists()) pairipLib.delete();
-            pairipLib = new File(extractDir, "lib/armeabi-v7a/libpairipcore.so");
-            if (pairipLib.exists()) pairipLib.delete();
-            callback.onLog("✓ Removed libpairipcore.so\n");
+            // Step 2: Add pairip bypass hook
+            callback.onLog("[2/5] Adding pairip bypass hook...");
+            File libDir = new File(extractDir, "lib/arm64-v8a");
+            if (libDir.exists()) {
+                File hookLib = new File(libDir, "lib_Pairip_CoreX.so");
+                try (InputStream is = context.getAssets().open("lib_Pairip_CoreX.so");
+                     FileOutputStream fos = new FileOutputStream(hookLib)) {
+                    byte[] buf = new byte[8192];
+                    int len;
+                    while ((len = is.read(buf)) > 0) fos.write(buf, 0, len);
+                }
+                callback.onLog("✓ Added CoreX hook\n");
+            } else {
+                callback.onLog("⚠ No arm64-v8a lib folder\n");
+            }
             
             // Step 3: Apply patches
             callback.onLog("[3/5] Applying patches...");
