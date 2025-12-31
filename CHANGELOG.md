@@ -1,3 +1,10 @@
+## [2.6.1](https://github.com/S0methingSomething/BitManager/compare/v2.6.0...v2.6.1) (2025-12-31)
+
+
+### Bug Fixes
+
+* add DEX patch and type fields to 3.22 patches ([e29fef5](https://github.com/S0methingSomething/BitManager/commit/e29fef56a03f7ebe288ae9c97fc1511af2846eb2))
+
 # [2.6.0](https://github.com/S0methingSomething/BitManager/compare/v2.5.5...v2.6.0) (2025-12-31)
 
 
