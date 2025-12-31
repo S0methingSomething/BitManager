@@ -1,4 +1,6 @@
 {
+  "version": "3.21.4",
+  "app": "com.candywriter.bitlife",
   "patches": [
     {
       "name": "Bypass Signature Check",
@@ -11,10 +13,55 @@
     },
     {
       "name": "Disable Store Redirect",
-      "description": "Prevents redirect to Play Store",
+      "description": "Prevents app from redirecting to Play Store",
       "type": "native",
-      "patch": "return_void",
-      "offsets": ["0x251A300"]
+      "offsets": ["0x251A300"],
+      "patch": "return_void"
+    },
+    {
+      "name": "Unlock All IAPs",
+      "description": "Unlocks all in-app purchases (Bitizenship, God Mode, Time Machine, etc.)",
+      "type": "native",
+      "offsets": [
+        "0x285AD24", "0x285AD38", "0x285AD4C", "0x285AD60", "0x2864DE8", "0x2864DFC",
+        "0x2864E10", "0x2864E24", "0x2864E38", "0x2864E4C", "0x2864EB0", "0x2864EC4",
+        "0x2864ED8", "0x2864EEC", "0x2864F00", "0x2864F14", "0x2864F28", "0x2864F3C",
+        "0x2864F64", "0x2864F78", "0x2864F8C", "0x2864FA0", "0x2864FB4", "0x2864FC8",
+        "0x2864FDC", "0x2864FF0", "0x2865004", "0x2865018", "0x286502C", "0x2865040",
+        "0x2865054", "0x2865068", "0x286507C", "0x2865090", "0x28650A4", "0x28650B8",
+        "0x28650CC", "0x28650E0", "0x28650F4", "0x2865108", "0x286511C", "0x2865130",
+        "0x2865144", "0x2865158", "0x286516C", "0x2865180", "0x2865194", "0x28651A8",
+        "0x28651BC", "0x28651D0", "0x28651E4", "0x28651F8", "0x286520C", "0x2865220",
+        "0x2865234", "0x2865248", "0x286525C", "0x2865270", "0x2865284", "0x2865298",
+        "0x28652AC", "0x28652C0", "0x28652D4", "0x28652E8", "0x28652FC", "0x2865310",
+        "0x2865324", "0x2865338", "0x286534C", "0x2865360", "0x2865374", "0x2865388",
+        "0x286539C", "0x28653B0", "0x28653C4", "0x28653D8", "0x28653EC", "0x2865400",
+        "0x2865414", "0x2865428", "0x286543C", "0x2865450", "0x2865464", "0x2865478",
+        "0x286548C", "0x28654B4", "0x28654C8", "0x28654DC", "0x28654F0", "0x2865504",
+        "0x2865518"
+      ],
+      "patch": "return_true"
+    },
+    {
+      "name": "Unlock BitPass",
+      "description": "Unlocks BitPass subscription",
+      "type": "native",
+      "offsets": ["0x28D0CA8"],
+      "patch": "return_true"
+    },
+    {
+      "name": "Unlock Items",
+      "description": "Use any item",
+      "type": "native",
+      "offsets": ["0x2916AD0", "0x2916AE4"],
+      "patch": "return_true"
+    },
+    {
+      "name": "No Streak Loss",
+      "description": "Never lose streaks",
+      "type": "native",
+      "offsets": ["0x2895160"],
+      "patch": "return_false"
     }
   ]
 }
