@@ -413,13 +413,15 @@ public class MainActivity extends Activity {
     }
     
     private KeyStore getOrCreateKeyStore() throws Exception {
-        File ksFile = new File(getFilesDir(), "bitmanager.p12");
-        KeyStore ks = KeyStore.getInstance("PKCS12");
+        File ksFile = new File(getFilesDir(), "bitmanager.bks");
+        KeyStore ks = KeyStore.getInstance("BKS");
         
         if (ksFile.exists()) {
             try (FileInputStream fis = new FileInputStream(ksFile)) {
                 ks.load(fis, "android".toCharArray());
                 return ks;
+            } catch (Exception e) {
+                ksFile.delete();
             }
         }
         
@@ -428,37 +430,171 @@ public class MainActivity extends Activity {
         kpg.initialize(2048);
         KeyPair kp = kpg.generateKeyPair();
         
-        // Generate self-signed certificate using Android KeyStore
-        android.security.keystore.KeyGenParameterSpec spec = 
-            new android.security.keystore.KeyGenParameterSpec.Builder("bitmanager_temp",
-                android.security.keystore.KeyProperties.PURPOSE_SIGN)
-            .setDigests(android.security.keystore.KeyProperties.DIGEST_SHA256)
-            .setSignaturePaddings(android.security.keystore.KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
-            .setCertificateSubject(new javax.security.auth.x500.X500Principal("CN=BitManager"))
-            .setCertificateSerialNumber(java.math.BigInteger.ONE)
-            .setCertificateNotBefore(new Date(System.currentTimeMillis() - 1000L * 60 * 60 * 24))
-            .setCertificateNotAfter(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 365 * 25))
-            .build();
+        // Create self-signed certificate manually
+        long now = System.currentTimeMillis();
+        Date notBefore = new Date(now - 24 * 60 * 60 * 1000L);
+        Date notAfter = new Date(now + 25L * 365 * 24 * 60 * 60 * 1000L);
         
-        KeyPairGenerator androidKpg = KeyPairGenerator.getInstance(
-            android.security.keystore.KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore");
-        androidKpg.initialize(spec);
-        KeyPair androidKp = androidKpg.generateKeyPair();
+        X509Certificate cert = generateCertificate(kp, "CN=BitManager", notBefore, notAfter);
         
-        KeyStore androidKs = KeyStore.getInstance("AndroidKeyStore");
-        androidKs.load(null);
-        X509Certificate cert = (X509Certificate) androidKs.getCertificate("bitmanager_temp");
-        PrivateKey pk = (PrivateKey) androidKs.getKey("bitmanager_temp", null);
-        
-        // Store in PKCS12
         ks.load(null, "android".toCharArray());
-        ks.setKeyEntry("key", pk, "android".toCharArray(), new java.security.cert.Certificate[]{cert});
+        ks.setKeyEntry("key", kp.getPrivate(), "android".toCharArray(), 
+            new java.security.cert.Certificate[]{cert});
         
         try (FileOutputStream fos = new FileOutputStream(ksFile)) {
             ks.store(fos, "android".toCharArray());
         }
         
         return ks;
+    }
+    
+    private X509Certificate generateCertificate(KeyPair kp, String dn, Date notBefore, Date notAfter) throws Exception {
+        // Use Android's hidden X509V3CertificateGenerator or build manually
+        // Simplified: use sun.security if available, otherwise build raw
+        
+        byte[] encoded = buildSelfSignedCert(kp, dn, notBefore, notAfter);
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(encoded));
+    }
+    
+    private byte[] buildSelfSignedCert(KeyPair kp, String dn, Date notBefore, Date notAfter) throws Exception {
+        // Build X.509 certificate DER encoding manually
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        
+        // TBSCertificate
+        ByteArrayOutputStream tbs = new ByteArrayOutputStream();
+        
+        // Version (v3 = 2)
+        tbs.write(new byte[]{(byte)0xA0, 0x03, 0x02, 0x01, 0x02});
+        
+        // Serial number
+        byte[] serial = java.math.BigInteger.valueOf(System.currentTimeMillis()).toByteArray();
+        tbs.write(0x02);
+        tbs.write(serial.length);
+        tbs.write(serial);
+        
+        // Signature algorithm (SHA256withRSA)
+        tbs.write(new byte[]{0x30, 0x0D, 0x06, 0x09, 0x2A, (byte)0x86, 0x48, (byte)0x86, (byte)0xF7, 0x0D, 0x01, 0x01, 0x0B, 0x05, 0x00});
+        
+        // Issuer
+        byte[] issuer = encodeDN(dn);
+        tbs.write(issuer);
+        
+        // Validity
+        ByteArrayOutputStream validity = new ByteArrayOutputStream();
+        validity.write(encodeUTCTime(notBefore));
+        validity.write(encodeUTCTime(notAfter));
+        tbs.write(0x30);
+        tbs.write(validity.size());
+        tbs.write(validity.toByteArray());
+        
+        // Subject (same as issuer for self-signed)
+        tbs.write(issuer);
+        
+        // SubjectPublicKeyInfo
+        byte[] pubKey = kp.getPublic().getEncoded();
+        tbs.write(pubKey);
+        
+        byte[] tbsBytes = tbs.toByteArray();
+        
+        // Sign TBSCertificate
+        Signature sig = Signature.getInstance("SHA256withRSA");
+        sig.initSign(kp.getPrivate());
+        
+        // Wrap TBS in SEQUENCE
+        ByteArrayOutputStream tbsSeq = new ByteArrayOutputStream();
+        writeLength(tbsSeq, tbsBytes.length);
+        byte[] tbsLen = tbsSeq.toByteArray();
+        
+        byte[] tbsFull = new byte[1 + tbsLen.length + tbsBytes.length];
+        tbsFull[0] = 0x30;
+        System.arraycopy(tbsLen, 0, tbsFull, 1, tbsLen.length);
+        System.arraycopy(tbsBytes, 0, tbsFull, 1 + tbsLen.length, tbsBytes.length);
+        
+        sig.update(tbsFull);
+        byte[] signature = sig.sign();
+        
+        // Build full certificate
+        ByteArrayOutputStream cert = new ByteArrayOutputStream();
+        cert.write(tbsFull);
+        
+        // Signature algorithm
+        cert.write(new byte[]{0x30, 0x0D, 0x06, 0x09, 0x2A, (byte)0x86, 0x48, (byte)0x86, (byte)0xF7, 0x0D, 0x01, 0x01, 0x0B, 0x05, 0x00});
+        
+        // Signature value (BIT STRING)
+        cert.write(0x03);
+        writeLength(cert, signature.length + 1);
+        cert.write(0x00); // no unused bits
+        cert.write(signature);
+        
+        // Wrap in SEQUENCE
+        byte[] certBytes = cert.toByteArray();
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        result.write(0x30);
+        writeLength(result, certBytes.length);
+        result.write(certBytes);
+        
+        return result.toByteArray();
+    }
+    
+    private byte[] encodeDN(String dn) throws Exception {
+        // Simple CN= encoding
+        String cn = dn.replace("CN=", "");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        
+        // RDN SET
+        ByteArrayOutputStream rdn = new ByteArrayOutputStream();
+        // AttributeTypeAndValue SEQUENCE
+        ByteArrayOutputStream atv = new ByteArrayOutputStream();
+        // CN OID
+        atv.write(new byte[]{0x06, 0x03, 0x55, 0x04, 0x03});
+        // UTF8String value
+        byte[] cnBytes = cn.getBytes("UTF-8");
+        atv.write(0x0C);
+        atv.write(cnBytes.length);
+        atv.write(cnBytes);
+        
+        byte[] atvBytes = atv.toByteArray();
+        rdn.write(0x30);
+        rdn.write(atvBytes.length);
+        rdn.write(atvBytes);
+        
+        byte[] rdnBytes = rdn.toByteArray();
+        baos.write(0x31);
+        baos.write(rdnBytes.length);
+        baos.write(rdnBytes);
+        
+        byte[] setBytes = baos.toByteArray();
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        result.write(0x30);
+        result.write(setBytes.length);
+        result.write(setBytes);
+        
+        return result.toByteArray();
+    }
+    
+    private byte[] encodeUTCTime(Date date) {
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyMMddHHmmss'Z'");
+        sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        byte[] time = sdf.format(date).getBytes();
+        byte[] result = new byte[time.length + 2];
+        result[0] = 0x17; // UTCTime
+        result[1] = (byte) time.length;
+        System.arraycopy(time, 0, result, 2, time.length);
+        return result;
+    }
+    
+    private void writeLength(OutputStream os, int len) throws IOException {
+        if (len < 128) {
+            os.write(len);
+        } else if (len < 256) {
+            os.write(0x81);
+            os.write(len);
+        } else {
+            os.write(0x82);
+            os.write(len >> 8);
+            os.write(len & 0xFF);
+        }
     }
     
     private byte[] createPKCS7(X509Certificate cert, byte[] signature) throws Exception {
