@@ -96,6 +96,7 @@ public class ApkUtils {
             .setOutputApk(output)
             .setV1SigningEnabled(true)
             .setV2SigningEnabled(true)
+            .setAlignFileSize(true)
             .build()
             .sign();
     }
