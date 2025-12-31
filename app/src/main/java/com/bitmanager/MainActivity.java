@@ -292,31 +292,34 @@ public class MainActivity extends Activity {
             try {
                 // Copy APK to world-readable location
                 File installApk = new File(getExternalFilesDir(null), "install.apk");
+                log("Copying APK to " + installApk.getAbsolutePath());
                 copyFile(patchedApk, installApk);
                 installApk.setReadable(true, false);
                 
                 String cmd = "pm install -i com.android.vending -r " + installApk.getAbsolutePath();
+                log("Running: " + cmd);
                 Process p = Shizuku.newProcess(new String[]{"sh", "-c", cmd}, null, null);
                 
                 BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
                 BufferedReader er = new BufferedReader(new InputStreamReader(p.getErrorStream()));
                 String line;
-                StringBuilder out = new StringBuilder();
-                while ((line = br.readLine()) != null) out.append(line).append("\n");
-                while ((line = er.readLine()) != null) out.append(line).append("\n");
+                while ((line = br.readLine()) != null) log("stdout: " + line);
+                while ((line = er.readLine()) != null) log("stderr: " + line);
                 
                 int exit = p.waitFor();
+                log("Exit code: " + exit);
                 installApk.delete();
                 
-                if (exit == 0 && out.toString().contains("Success")) {
+                if (exit == 0) {
                     log("✓ Installed successfully (as Play Store app)");
                 } else {
-                    log("✗ Install failed: " + out.toString().trim());
+                    log("✗ Install failed (exit " + exit + ")");
                     log("Falling back to standard install...");
                     runOnUiThread(this::installStandard);
                 }
             } catch (Exception e) {
                 log("✗ Shizuku install failed: " + e.getMessage());
+                e.printStackTrace();
                 runOnUiThread(this::installStandard);
             }
         }).start();
