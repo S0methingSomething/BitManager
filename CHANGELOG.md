@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/S0methingSomething/BitManager/compare/v2.3.1...v2.4.0) (2025-12-31)
+
+
+### Features
+
+* add Disable Store Redirect patch ([2f8ec26](https://github.com/S0methingSomething/BitManager/commit/2f8ec2673e1836bbd5be762246ba9d2b26b8a1dc))
+
 ## [2.3.1](https://github.com/S0methingSomething/BitManager/compare/v2.3.0...v2.3.1) (2025-12-31)
 
 
