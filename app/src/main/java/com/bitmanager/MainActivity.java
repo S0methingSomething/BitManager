@@ -305,7 +305,6 @@ public class MainActivity extends Activity {
         // Create unsigned APK first
         File unsigned = new File(getCacheDir(), "unsigned.apk");
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(unsigned))) {
-            zos.setLevel(Deflater.BEST_SPEED);
             zipDir(dir, dir, zos);
         }
         
@@ -317,20 +316,43 @@ public class MainActivity extends Activity {
     private void zipDir(File root, File dir, ZipOutputStream zos) throws IOException {
         File[] files = dir.listFiles();
         if (files == null) return;
+        byte[] buf = new byte[8192];
         for (File f : files) {
             if (f.isDirectory()) {
                 zipDir(root, f, zos);
             } else {
                 String path = f.getAbsolutePath().substring(root.getAbsolutePath().length() + 1);
-                zos.putNextEntry(new ZipEntry(path));
+                ZipEntry entry = new ZipEntry(path);
+                
+                // Android R+ requires resources.arsc uncompressed and 4-byte aligned
+                // Also store .so files and .png uncompressed for performance
+                if (path.equals("resources.arsc") || path.endsWith(".so") || path.endsWith(".png") || path.endsWith(".arsc")) {
+                    entry.setMethod(ZipEntry.STORED);
+                    entry.setSize(f.length());
+                    entry.setCompressedSize(f.length());
+                    entry.setCrc(computeCrc(f));
+                } else {
+                    entry.setMethod(ZipEntry.DEFLATED);
+                }
+                
+                zos.putNextEntry(entry);
                 try (FileInputStream fis = new FileInputStream(f)) {
-                    byte[] buf = new byte[8192];
                     int len;
                     while ((len = fis.read(buf)) > 0) zos.write(buf, 0, len);
                 }
                 zos.closeEntry();
             }
         }
+    }
+    
+    private long computeCrc(File f) throws IOException {
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        try (FileInputStream fis = new FileInputStream(f)) {
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = fis.read(buf)) > 0) crc.update(buf, 0, len);
+        }
+        return crc.getValue();
     }
 
     private void signApk(File input, File output) throws Exception {
