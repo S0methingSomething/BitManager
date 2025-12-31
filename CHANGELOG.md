@@ -1,3 +1,10 @@
+## [2.1.3](https://github.com/S0methingSomething/BitManager/compare/v2.1.2...v2.1.3) (2025-12-31)
+
+
+### Bug Fixes
+
+* add proper APK signing with v1 signature ([4aef00f](https://github.com/S0methingSomething/BitManager/commit/4aef00f9473f4ced622acab3181c106597734790))
+
 ## [2.1.2](https://github.com/S0methingSomething/BitManager/compare/v2.1.1...v2.1.2) (2025-12-31)
 
 
