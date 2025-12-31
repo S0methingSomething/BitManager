@@ -33,28 +33,45 @@ ReVanced-style patcher for BitLife. Patches are fetched from this repo automatic
 
 ## Building
 
-### Local Build
+### Automated Releases (Semantic Release)
+
+Releases are automated using semantic-release. Just commit with conventional commits:
+
+```bash
+# Features (minor version bump)
+git commit -m "feat: add new patch type"
+
+# Fixes (patch version bump)
+git commit -m "fix: resolve crash on Android 12"
+
+# Breaking changes (major version bump)
+git commit -m "feat!: redesign UI"
+# or
+git commit -m "feat: new feature
+
+BREAKING CHANGE: old API removed"
+```
+
+Push to `main` and semantic-release will:
+1. Determine version bump from commits
+2. Update `versionCode` and `versionName` in `build.gradle`
+3. Build and sign APK
+4. Create GitHub release with APK
+5. Generate CHANGELOG
+
+### Manual Build
+### Manual Build
 ```bash
 ./gradlew assembleDebug
 # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### Release Build
-Releases are automated via GitHub Actions. To create a release:
-
-1. **Setup signing** (first time only):
-   ```bash
-   ./scripts/generate_keystore.sh
-   ```
-   Add the output secrets to GitHub: Settings → Secrets → Actions
-
-2. **Create release**:
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-   
-GitHub Actions will build and publish the signed APK automatically.
+### Setup Signing (First Time)
+### Setup Signing (First Time)
+```bash
+./scripts/generate_keystore.sh
+```
+Add the output secrets to GitHub: Settings → Secrets → Actions
 
 ## Adding New Versions
 

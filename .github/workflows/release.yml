@@ -1,65 +1,45 @@
-name: Build and Release
+name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+    branches:
+      - main
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0
+          
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           
+      - name: Install semantic-release
+        run: |
+          npm install -g semantic-release @semantic-release/git @semantic-release/changelog @semantic-release/exec
+          
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
         
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
-        
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign_app
-        with:
-          releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: "34.0.0"
-          
-      - name: Rename APK
-        run: |
-          mv ${{steps.sign_app.outputs.signedReleaseFile}} BitManager-${{ github.ref_name }}.apk
-          
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: BitManager-${{ github.ref_name }}.apk
-          body: |
-            ## BitManager ${{ github.ref_name }}
-            
-            ### Installation
-            1. Download `BitManager-${{ github.ref_name }}.apk`
-            2. Install on your device
-            3. Install Shizuku if using live patching
-            
-            ### Usage
-            - **APK Mode**: Select BitLife APK → Choose patches → Patch → Install
-            - **Live Mode**: Patch installed BitLife directly (requires Shizuku)
-            
-            ### Patches Available
-            - Unlock All IAPs
-            - Unlock BitPass
-            - Unlock Items
-            - No Streak Loss
+      - name: Semantic Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          ALIAS: ${{ secrets.ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: npx semantic-release

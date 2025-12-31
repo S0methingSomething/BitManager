@@ -1,0 +1,33 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    "@semantic-release/changelog",
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "bash scripts/update_version.sh ${nextRelease.version}",
+        "publishCmd": "bash scripts/build_and_sign.sh ${nextRelease.version}"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["CHANGELOG.md", "app/build.gradle"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "path": "BitManager-*.apk",
+            "label": "BitManager APK"
+          }
+        ]
+      }
+    ]
+  ]
+}
