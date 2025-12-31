@@ -1,3 +1,10 @@
+## [2.1.9](https://github.com/S0methingSomething/BitManager/compare/v2.1.8...v2.1.9) (2025-12-31)
+
+
+### Bug Fixes
+
+* use PKCS12 keystore (Android compatible) ([1e83b5f](https://github.com/S0methingSomething/BitManager/commit/1e83b5f3523fb961adf7dd49e57ba03d8e90413e))
+
 ## [2.1.8](https://github.com/S0methingSomething/BitManager/compare/v2.1.7...v2.1.8) (2025-12-31)
 
 
