@@ -1,3 +1,13 @@
+# [2.0.0](https://github.com/S0methingSomething/BitManager/compare/v1.0.4...v2.0.0) (2025-12-31)
+
+
+* feat!: simplify to APK-only patching, remove Shizuku ([01db9be](https://github.com/S0methingSomething/BitManager/commit/01db9be10ab6db8e898a4c8fadd30d57d08baffd))
+
+
+### BREAKING CHANGES
+
+* removed live patching, now only patches APK files
+
 ## [1.0.4](https://github.com/S0methingSomething/BitManager/compare/v1.0.3...v1.0.4) (2025-12-31)
 
 
