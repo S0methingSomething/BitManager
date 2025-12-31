@@ -8,15 +8,15 @@ public class Patch {
     public String name;
     public String description;
     public String type = "native";  // "native" or "dex"
-    public String patchType;        // "return_void", "return_true", "return_false"
+    public String patch;            // "return_void", "return_true", "return_false"
     
     // For native patches
-    public long[] offsets;
+    public String[] offsets;
     
-    // For DEX patches  
+    // For DEX patches (pre-computed offset)
     public String dexFile;
-    public String className;
-    public String methodName;
+    public String offset;           // Pre-computed offset in hex
+    public String bytes;            // Bytes to write in hex
     
     public boolean isNative() { return "native".equals(type); }
     public boolean isDex() { return "dex".equals(type); }

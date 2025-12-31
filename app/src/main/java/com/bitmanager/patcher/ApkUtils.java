@@ -32,30 +32,39 @@ public class ApkUtils {
     }
     
     public static void repack(File srcDir, File destApk) throws IOException {
-        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(destApk))) {
-            zipDir(srcDir, srcDir, zos);
+        try (FileOutputStream fos = new FileOutputStream(destApk);
+             ZipOutputStream zos = new ZipOutputStream(fos)) {
+            zipDir(srcDir, srcDir, zos, fos);
         }
     }
     
-    private static void zipDir(File root, File dir, ZipOutputStream zos) throws IOException {
+    private static void zipDir(File root, File dir, ZipOutputStream zos, FileOutputStream fos) throws IOException {
         File[] files = dir.listFiles();
         if (files == null) return;
         
         for (File f : files) {
             if (f.isDirectory()) {
-                zipDir(root, f, zos);
+                zipDir(root, f, zos, fos);
                 continue;
             }
             
             String path = f.getAbsolutePath().substring(root.getAbsolutePath().length() + 1);
             ZipEntry entry = new ZipEntry(path);
             
-            // Store uncompressed for Android R+ compatibility
-            if (path.equals("resources.arsc") || path.endsWith(".so") || path.endsWith(".png")) {
+            // Store uncompressed with 4-byte alignment for Android R+
+            if (path.equals("resources.arsc") || path.endsWith(".so")) {
                 entry.setMethod(ZipEntry.STORED);
                 entry.setSize(f.length());
                 entry.setCompressedSize(f.length());
                 entry.setCrc(computeCrc(f));
+                
+                // Add padding for 4-byte alignment
+                int headerSize = 30 + path.getBytes().length;
+                long offset = fos.getChannel().position() + headerSize;
+                int padding = (int) ((4 - (offset % 4)) % 4);
+                if (padding > 0) {
+                    entry.setExtra(new byte[padding]);
+                }
             }
             
             zos.putNextEntry(entry);

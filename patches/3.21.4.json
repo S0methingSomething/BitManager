@@ -6,10 +6,9 @@
       "name": "Bypass Signature Check",
       "description": "Disables pairip signature verification",
       "type": "dex",
-      "patch": "return_void",
       "dexFile": "classes11.dex",
-      "className": "Lcom/pairip/SignatureCheck;",
-      "methodName": "verifyIntegrity"
+      "offset": "0x1374b4",
+      "bytes": "0e00"
     },
     {
       "name": "Disable Store Redirect",
