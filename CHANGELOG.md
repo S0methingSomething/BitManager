@@ -1,3 +1,10 @@
+## [2.5.1](https://github.com/S0methingSomething/BitManager/compare/v2.5.0...v2.5.1) (2025-12-31)
+
+
+### Bug Fixes
+
+* rename ApkSigner to ApkSignerUtil to avoid conflict, remove Sun APIs ([58e28df](https://github.com/S0methingSomething/BitManager/commit/58e28dfb1e277e9cf6f4040c592476c56f0ecfc7))
+
 # [2.5.0](https://github.com/S0methingSomething/BitManager/compare/v2.4.0...v2.5.0) (2025-12-31)
 
 
