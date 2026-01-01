@@ -126,8 +126,8 @@ public class Patcher {
         // Find VMRunner.smali
         Path vmrunner = null;
         for (int i = 1; i <= 20; i++) {
-            String suffix = i == 1 ? "" : "_classes" + i;
-            Path candidate = decompiled.resolve("smali" + suffix + "/com/pairip/VMRunner.smali");
+            String dir = i == 1 ? "smali" : "smali_classes" + i;
+            Path candidate = decompiled.resolve(dir + "/com/pairip/VMRunner.smali");
             if (Files.exists(candidate)) {
                 vmrunner = candidate;
                 break;
