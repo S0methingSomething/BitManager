@@ -52,7 +52,7 @@ public class ApkUtils {
             ZipEntry entry = new ZipEntry(path);
             
             // Store uncompressed with 4-byte alignment for Android R+
-            if (path.equals("resources.arsc") || path.endsWith(".so")) {
+            if (path.equals("resources.arsc")) {
                 entry.setMethod(ZipEntry.STORED);
                 entry.setSize(f.length());
                 entry.setCompressedSize(f.length());

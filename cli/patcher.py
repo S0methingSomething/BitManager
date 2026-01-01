@@ -216,8 +216,8 @@ def repack_apk(src_dir, dest_apk):
                 full_path = os.path.join(root, f)
                 arc_name = os.path.relpath(full_path, src_dir)
                 
-                # Store uncompressed for Android R+ compatibility
-                if f == 'resources.arsc' or f.endswith('.so') or f.endswith('.png'):
+                # Store uncompressed for Android R+ compatibility (only resources.arsc)
+                if f == 'resources.arsc':
                     with open(full_path, 'rb') as fp:
                         data = fp.read()
                     info = zipfile.ZipInfo(arc_name)
