@@ -219,7 +219,7 @@ public class MainActivity extends Activity {
                     if (!p.isDex() && p.offsets != null) {
                         Patcher.NativePatch np = new Patcher.NativePatch();
                         np.name = p.name;
-                        np.offsets = p.offsets;
+                        np.offsets = Arrays.asList(p.offsets);
                         nativePatches.add(np);
                     }
                 }
