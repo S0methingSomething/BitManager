@@ -1,7 +1,7 @@
 package com.bitmanager.patcher;
 
 import android.content.Context;
-import java.io.File;
+import java.io.*;
 import java.util.List;
 
 /**
