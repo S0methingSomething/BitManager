@@ -14,4 +14,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "BitManager"
-include ':app'
+include ':app', ':core'

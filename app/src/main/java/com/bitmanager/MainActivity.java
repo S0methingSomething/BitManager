@@ -12,12 +12,14 @@ import android.os.IBinder;
 import android.view.View;
 import android.widget.*;
 import androidx.core.content.FileProvider;
-import com.bitmanager.patcher.*;
+import com.bitmanager.core.Patcher;
+import com.bitmanager.patcher.Patch;
+import com.bitmanager.patcher.PatchRepository;
 import rikka.shizuku.Shizuku;
 import java.io.*;
 import java.util.*;
 
-public class MainActivity extends Activity implements Patcher.Callback {
+public class MainActivity extends Activity {
     private static final int PICK_APK = 1;
     private static final int SHIZUKU_CODE = 2;
     
@@ -182,7 +184,7 @@ public class MainActivity extends Activity implements Patcher.Callback {
         patchListView.addView(divider);
         
         CheckBox expCb = new CheckBox(this);
-        expCb.setText("⚠ Experimental: Pairip Bypass");
+        expCb.setText("⚠ CoreX Pairip Bypass");
         expCb.setTextSize(16);
         expCb.setPadding(0, 16, 0, 12);
         expCb.setChecked(false);
@@ -190,7 +192,7 @@ public class MainActivity extends Activity implements Patcher.Callback {
         patchListView.addView(expCb);
         
         TextView expDesc = new TextView(this);
-        expDesc.setText("May fix crashes on some versions. Try if normal patching fails.");
+        expDesc.setText("Bypasses Level 3 pairip protection. Enable if app crashes after patching.");
         expDesc.setTextSize(12);
         expDesc.setPadding(48, 0, 0, 12);
         expDesc.setAlpha(0.7f);
@@ -206,35 +208,73 @@ public class MainActivity extends Activity implements Patcher.Callback {
         selectApkBtn.setEnabled(false);
         
         if (experimentalMode) {
-            log("⚠ Experimental pairip bypass enabled");
+            log("⚠ CoreX pairip bypass enabled");
         }
         
-        Patcher patcher = new Patcher(this, selectedApk, apkVersion, selectedPatches, experimentalMode, this);
-        patcher.start();
-    }
-
-    // Patcher.Callback
-    @Override
-    public void onLog(String message) { log(message); }
-    
-    @Override
-    public void onComplete(File result) {
-        patchedApk = result;
-        runOnUiThread(() -> {
-            selectApkBtn.setEnabled(true);
-            patchBtn.setEnabled(true);
-            installBtn.setVisibility(View.VISIBLE);
-            installBtn.setEnabled(true);
-        });
-    }
-    
-    @Override
-    public void onError(String error) {
-        log("\n✗ FAILED: " + error);
-        runOnUiThread(() -> {
-            selectApkBtn.setEnabled(true);
-            patchBtn.setEnabled(true);
-        });
+        new Thread(() -> {
+            try {
+                // Convert patches to core format
+                List<Patcher.NativePatch> nativePatches = new ArrayList<>();
+                for (Patch p : selectedPatches) {
+                    if (!p.isDex() && p.offsets != null) {
+                        Patcher.NativePatch np = new Patcher.NativePatch();
+                        np.name = p.name;
+                        np.offsets = p.offsets;
+                        nativePatches.add(np);
+                    }
+                }
+                
+                // Create config
+                Patcher.PatchConfig config = new Patcher.PatchConfig();
+                config.corex = experimentalMode;
+                config.keystore = new File(getFilesDir(), "debug.keystore").getAbsolutePath();
+                config.patches = nativePatches;
+                
+                // Create keystore if needed
+                File ks = new File(config.keystore);
+                if (!ks.exists()) {
+                    try (InputStream is = getAssets().open("debug.keystore");
+                         OutputStream os = new FileOutputStream(ks)) {
+                        byte[] buf = new byte[8192];
+                        int len;
+                        while ((len = is.read(buf)) > 0) os.write(buf, 0, len);
+                    }
+                }
+                
+                // Patch
+                File output = new File(getCacheDir(), "bitlife_patched.apk");
+                Patcher patcher = new Patcher(new Patcher.ProgressListener() {
+                    public void onProgress(String msg) { log(msg); }
+                    public void onSuccess(String msg) { log("✓ " + msg); }
+                    public void onError(String msg) { log("✗ " + msg); }
+                });
+                
+                boolean success = patcher.patch(selectedApk, output, config);
+                
+                if (success) {
+                    patchedApk = output;
+                    runOnUiThread(() -> {
+                        selectApkBtn.setEnabled(true);
+                        patchBtn.setEnabled(true);
+                        installBtn.setVisibility(View.VISIBLE);
+                        installBtn.setEnabled(true);
+                    });
+                } else {
+                    log("\n✗ Patching failed");
+                    runOnUiThread(() -> {
+                        selectApkBtn.setEnabled(true);
+                        patchBtn.setEnabled(true);
+                    });
+                }
+            } catch (Exception e) {
+                log("\n✗ Error: " + e.getMessage());
+                e.printStackTrace();
+                runOnUiThread(() -> {
+                    selectApkBtn.setEnabled(true);
+                    patchBtn.setEnabled(true);
+                });
+            }
+        }).start();
     }
 
     // Installation
