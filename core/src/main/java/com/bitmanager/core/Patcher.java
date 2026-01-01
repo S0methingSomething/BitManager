@@ -117,6 +117,18 @@ public class Patcher {
     }
     
     private String findApktool() {
+        // Check extracted apktool.jar (Android app extracts to files dir)
+        String[] locations = {
+            "/data/data/com.bitmanager/files/apktool.jar",
+            "apktool.jar",
+            "../apktool.jar"
+        };
+        
+        for (String loc : locations) {
+            File f = new File(loc);
+            if (f.exists()) return f.getAbsolutePath();
+        }
+        
         // Check if apktool.jar exists in same directory as this JAR
         try {
             String jarPath = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
@@ -127,7 +139,7 @@ public class Patcher {
             }
         } catch (Exception ignored) {}
         
-        // Check system apktool
+        // Fallback to system apktool
         return "apktool";
     }
     
