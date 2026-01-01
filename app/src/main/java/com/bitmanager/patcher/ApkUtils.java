@@ -117,6 +117,69 @@ public class ApkUtils {
         return lib.exists() ? lib : null;
     }
     
+    public static void restoreCrc32(File patchedApk, File originalApk, File output) throws IOException {
+        // Get original CRC32 values
+        Map<String, Long> originalCrcs = new HashMap<>();
+        try (ZipFile orig = new ZipFile(originalApk)) {
+            Enumeration<? extends ZipEntry> entries = orig.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry e = entries.nextElement();
+                originalCrcs.put(e.getName(), e.getCrc());
+            }
+        }
+        
+        // Read patched APK and patch CRC32 in ZIP headers
+        byte[] data;
+        try (FileInputStream fis = new FileInputStream(patchedApk)) {
+            data = new byte[(int) patchedApk.length()];
+            fis.read(data);
+        }
+        
+        // Patch local file headers (PK\x03\x04) - CRC32 at offset 14
+        // Patch central directory (PK\x01\x02) - CRC32 at offset 16
+        int i = 0;
+        while (i < data.length - 30) {
+            if (data[i] == 'P' && data[i+1] == 'K') {
+                if (data[i+2] == 3 && data[i+3] == 4) { // Local header
+                    int fnameLen = (data[i+26] & 0xFF) | ((data[i+27] & 0xFF) << 8);
+                    int extraLen = (data[i+28] & 0xFF) | ((data[i+29] & 0xFF) << 8);
+                    String fname = new String(data, i+30, fnameLen);
+                    Long origCrc = originalCrcs.get(fname);
+                    if (origCrc != null) {
+                        data[i+14] = (byte)(origCrc & 0xFF);
+                        data[i+15] = (byte)((origCrc >> 8) & 0xFF);
+                        data[i+16] = (byte)((origCrc >> 16) & 0xFF);
+                        data[i+17] = (byte)((origCrc >> 24) & 0xFF);
+                    }
+                    int compSize = (data[i+18] & 0xFF) | ((data[i+19] & 0xFF) << 8) |
+                                   ((data[i+20] & 0xFF) << 16) | ((data[i+21] & 0xFF) << 24);
+                    i += 30 + fnameLen + extraLen + compSize;
+                } else if (data[i+2] == 1 && data[i+3] == 2) { // Central dir
+                    int fnameLen = (data[i+28] & 0xFF) | ((data[i+29] & 0xFF) << 8);
+                    int extraLen = (data[i+30] & 0xFF) | ((data[i+31] & 0xFF) << 8);
+                    int commentLen = (data[i+32] & 0xFF) | ((data[i+33] & 0xFF) << 8);
+                    String fname = new String(data, i+46, fnameLen);
+                    Long origCrc = originalCrcs.get(fname);
+                    if (origCrc != null) {
+                        data[i+16] = (byte)(origCrc & 0xFF);
+                        data[i+17] = (byte)((origCrc >> 8) & 0xFF);
+                        data[i+18] = (byte)((origCrc >> 16) & 0xFF);
+                        data[i+19] = (byte)((origCrc >> 24) & 0xFF);
+                    }
+                    i += 46 + fnameLen + extraLen + commentLen;
+                } else {
+                    i++;
+                }
+            } else {
+                i++;
+            }
+        }
+        
+        try (FileOutputStream fos = new FileOutputStream(output)) {
+            fos.write(data);
+        }
+    }
+    
     public static void deleteRecursive(File f) {
         if (f.isDirectory()) {
             File[] files = f.listFiles();

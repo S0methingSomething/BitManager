@@ -32,6 +32,7 @@ public class MainActivity extends Activity implements Patcher.Callback {
     private List<Patch> selectedPatches = new ArrayList<>();
     private File patchedApk;
     private StringBuilder logBuilder = new StringBuilder();
+    private boolean experimentalMode = false;
 
     // Shizuku
     private IShellService shellService;
@@ -173,6 +174,28 @@ public class MainActivity extends Activity implements Patcher.Callback {
             patchListView.addView(cb);
         }
         
+        // Add experimental pairip bypass toggle
+        View divider = new View(this);
+        divider.setLayoutParams(new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 2));
+        divider.setBackgroundColor(0x33FFFFFF);
+        patchListView.addView(divider);
+        
+        CheckBox expCb = new CheckBox(this);
+        expCb.setText("⚠ Experimental: Pairip Bypass");
+        expCb.setTextSize(16);
+        expCb.setPadding(0, 16, 0, 12);
+        expCb.setChecked(false);
+        expCb.setOnCheckedChangeListener((v, checked) -> experimentalMode = checked);
+        patchListView.addView(expCb);
+        
+        TextView expDesc = new TextView(this);
+        expDesc.setText("May fix crashes on some versions. Try if normal patching fails.");
+        expDesc.setTextSize(12);
+        expDesc.setPadding(48, 0, 0, 12);
+        expDesc.setAlpha(0.7f);
+        patchListView.addView(expDesc);
+        
         patchListView.setVisibility(View.VISIBLE);
         patchBtn.setVisibility(View.VISIBLE);
         patchBtn.setEnabled(true);
@@ -182,7 +205,11 @@ public class MainActivity extends Activity implements Patcher.Callback {
         patchBtn.setEnabled(false);
         selectApkBtn.setEnabled(false);
         
-        Patcher patcher = new Patcher(this, selectedApk, apkVersion, selectedPatches, this);
+        if (experimentalMode) {
+            log("⚠ Experimental pairip bypass enabled");
+        }
+        
+        Patcher patcher = new Patcher(this, selectedApk, apkVersion, selectedPatches, experimentalMode, this);
         patcher.start();
     }
 
