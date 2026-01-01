@@ -66,6 +66,25 @@ public class MainActivity extends Activity {
         patchBtn.setOnClickListener(v -> startPatch());
         installBtn.setOnClickListener(v -> installApk());
         
+        // Extract apktool on first run
+        new Thread(() -> {
+            try {
+                File apktool = new File(getFilesDir(), "apktool.jar");
+                if (!apktool.exists()) {
+                    log("Extracting apktool...");
+                    try (InputStream is = getAssets().open("apktool.jar");
+                         OutputStream os = new FileOutputStream(apktool)) {
+                        byte[] buf = new byte[8192];
+                        int len;
+                        while ((len = is.read(buf)) > 0) os.write(buf, 0, len);
+                    }
+                    log("✓ Ready");
+                }
+            } catch (Exception e) {
+                log("✗ Failed to extract apktool: " + e.getMessage());
+            }
+        }).start();
+        
         shellArgs = new Shizuku.UserServiceArgs(
             new ComponentName(BuildConfig.APPLICATION_ID, ShellService.class.getName()))
             .daemon(false).processNameSuffix("shell")

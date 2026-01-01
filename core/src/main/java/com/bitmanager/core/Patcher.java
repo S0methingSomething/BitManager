@@ -81,9 +81,21 @@ public class Patcher {
     
     private boolean runApktool(String... args) {
         try {
-            String[] cmd = new String[args.length + 1];
-            cmd[0] = "apktool";
-            System.arraycopy(args, 0, cmd, 1, args.length);
+            // Try bundled apktool.jar first (for Android)
+            String apktoolPath = findApktool();
+            
+            String[] cmd;
+            if (apktoolPath != null && apktoolPath.endsWith(".jar")) {
+                cmd = new String[args.length + 3];
+                cmd[0] = "java";
+                cmd[1] = "-jar";
+                cmd[2] = apktoolPath;
+                System.arraycopy(args, 0, cmd, 3, args.length);
+            } else {
+                cmd = new String[args.length + 1];
+                cmd[0] = apktoolPath != null ? apktoolPath : "apktool";
+                System.arraycopy(args, 0, cmd, 1, args.length);
+            }
             
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.redirectErrorStream(true);
@@ -102,6 +114,21 @@ public class Patcher {
             listener.onError("apktool error: " + e.getMessage());
             return false;
         }
+    }
+    
+    private String findApktool() {
+        // Check if apktool.jar exists in same directory as this JAR
+        try {
+            String jarPath = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+            Path jarDir = Paths.get(jarPath).getParent();
+            if (jarDir != null) {
+                Path apktool = jarDir.resolve("apktool.jar");
+                if (Files.exists(apktool)) return apktool.toString();
+            }
+        } catch (Exception ignored) {}
+        
+        // Check system apktool
+        return "apktool";
     }
     
     private void addCoreXLibrary(Path decompiled) throws IOException {
