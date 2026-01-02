@@ -1,3 +1,20 @@
+# [2.7.0](https://github.com/S0methingSomething/BitManager/compare/v2.6.2...v2.7.0) (2026-01-02)
+
+
+### Bug Fixes
+
+* add missing imports in Patcher.java ([9cee3a8](https://github.com/S0methingSomething/BitManager/commit/9cee3a84b71d56f15bc54cb8275aa919e5b64987))
+* only store resources.arsc uncompressed, keep .so compressed ([18136f1](https://github.com/S0methingSomething/BitManager/commit/18136f191ef34ebc0a153cf93abb710c1f8363ff))
+* remove libpairipcore.so to fully bypass pairip protection ([c4ec0b8](https://github.com/S0methingSomething/BitManager/commit/c4ec0b802c905a02851fd1c304c6467b6dac23a8))
+* update PatchRepository for new Patch model ([4b22e6c](https://github.com/S0methingSomething/BitManager/commit/4b22e6c5286c100eddcbd42284171a6dd0422250))
+
+
+### Features
+
+* add local patches fallback to CLI ([6a32618](https://github.com/S0methingSomething/BitManager/commit/6a326189d26bcab2de144871f1cfe9c9c361dce1))
+* add pairip CoreX hook bypass ([df1a925](https://github.com/S0methingSomething/BitManager/commit/df1a925317511c91aca88d0810c7e06b0e40a0e3))
+* add pairip CoreX hook bypass ([4d1dead](https://github.com/S0methingSomething/BitManager/commit/4d1deada07581bdda7fd00a4305077ecb70aea54))
+
 # [2.7.0](https://github.com/S0methingSomething/BitManager/compare/v2.6.2...v2.7.0) (2026-01-01)
 
 
