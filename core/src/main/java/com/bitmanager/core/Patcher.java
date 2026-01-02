@@ -225,18 +225,14 @@ public class Patcher {
     }
     
     private void applyBsdiff(Path soPath, File patchFile) throws Exception {
-        // Use bspatch command
-        Path output = soPath.getParent().resolve("libil2cpp_patched.so");
-        ProcessBuilder pb = new ProcessBuilder("bspatch", soPath.toString(), output.toString(), patchFile.getAbsolutePath());
-        pb.redirectErrorStream(true);
-        Process p = pb.start();
+        // Pure Java bsdiff - works on both CLI and Android
+        byte[] oldBytes = Files.readAllBytes(soPath);
+        byte[] patchBytes = Files.readAllBytes(patchFile.toPath());
         
-        if (p.waitFor() == 0) {
-            Files.move(output, soPath, StandardCopyOption.REPLACE_EXISTING);
-            listener.onSuccess("Applied bsdiff patch (pairip bypass)");
-        } else {
-            listener.onError("bspatch failed - bsdiff not installed?");
-        }
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        io.sigpipe.jbsdiff.Patch.patch(oldBytes, patchBytes, out);
+        Files.write(soPath, out.toByteArray());
+        listener.onSuccess("Applied bsdiff patch (pairip bypass)");
     }
     
     private void signApk(Path input, Path output, String keystore) throws Exception {
