@@ -41,14 +41,23 @@ public class Patcher {
             }
             listener.onSuccess("Decompiled");
             
-            // CoreX bypass
-            if (config.corex) {
+            // Bsdiff patch (restores pairip-stripped code)
+            if (config.bsdiffPatch != null) {
+                listener.onProgress("Applying bsdiff patch...");
+                Path libil2cpp = decompiled.resolve("lib/arm64-v8a/libil2cpp.so");
+                if (Files.exists(libil2cpp)) {
+                    applyBsdiff(libil2cpp, config.bsdiffPatch);
+                }
+            }
+            
+            // CoreX bypass (alternative to bsdiff)
+            if (config.corex && config.bsdiffPatch == null) {
                 listener.onProgress("Applying CoreX bypass...");
                 addCoreXLibrary(decompiled);
                 patchVMRunner(decompiled);
             }
             
-            // Native patches
+            // Native patches (offset-based)
             if (config.patches != null && !config.patches.isEmpty()) {
                 listener.onProgress("Applying patches...");
                 Path libil2cpp = decompiled.resolve("lib/arm64-v8a/libil2cpp.so");
@@ -215,6 +224,21 @@ public class Patcher {
         Files.write(soPath, data);
     }
     
+    private void applyBsdiff(Path soPath, File patchFile) throws Exception {
+        // Use bspatch command
+        Path output = soPath.getParent().resolve("libil2cpp_patched.so");
+        ProcessBuilder pb = new ProcessBuilder("bspatch", soPath.toString(), output.toString(), patchFile.getAbsolutePath());
+        pb.redirectErrorStream(true);
+        Process p = pb.start();
+        
+        if (p.waitFor() == 0) {
+            Files.move(output, soPath, StandardCopyOption.REPLACE_EXISTING);
+            listener.onSuccess("Applied bsdiff patch (pairip bypass)");
+        } else {
+            listener.onError("bspatch failed - bsdiff not installed?");
+        }
+    }
+    
     private void signApk(Path input, Path output, String keystore) throws Exception {
         // Try apksigner first
         try {
@@ -255,6 +279,7 @@ public class Patcher {
     public static class PatchConfig {
         public boolean corex = false;
         public String keystore;
+        public File bsdiffPatch;  // Restores pairip-stripped code
         public java.util.List<NativePatch> patches;
     }
     

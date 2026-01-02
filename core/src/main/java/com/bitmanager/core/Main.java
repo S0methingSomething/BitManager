@@ -27,12 +27,14 @@ public class Main {
         String keystore = findDefaultKeystore();
         boolean corex = false;
         boolean noPatches = false;
+        boolean useBsdiff = false;
         
         for (int i = 1; i < args.length; i++) {
             switch (args[i]) {
                 case "--version": version = args[++i]; break;
                 case "--keystore": keystore = args[++i]; break;
                 case "--corex": corex = true; break;
+                case "--bsdiff": useBsdiff = true; break;
                 case "--no-patches": noPatches = true; break;
                 case "-o": outputApk = args[++i]; break;
                 default:
@@ -63,6 +65,17 @@ public class Main {
         config.keystore = keystore;
         config.patches = patches;
         
+        // Find bsdiff patch if requested
+        if (useBsdiff) {
+            File bsdiff = findBsdiffPatch(version);
+            if (bsdiff != null) {
+                config.bsdiffPatch = bsdiff;
+                System.out.println("[✓] Using bsdiff patch: " + bsdiff.getName());
+            } else {
+                System.out.println("[*] No bsdiff patch for version " + version);
+            }
+        }
+        
         // Patch
         Patcher patcher = new Patcher(null);
         try {
@@ -81,9 +94,22 @@ public class Main {
         System.out.println("Options:");
         System.out.println("  --version X.X.X   Specify APK version");
         System.out.println("  --keystore PATH   Custom keystore");
-        System.out.println("  --corex           Enable CoreX pairip bypass");
+        System.out.println("  --bsdiff          Apply bsdiff patch (restores pairip code)");
+        System.out.println("  --corex           Enable CoreX pairip bypass (alternative)");
         System.out.println("  --no-patches      Skip JSON patches");
         System.out.println("  -o OUTPUT         Output APK path");
+    }
+    
+    private static File findBsdiffPatch(String version) {
+        String[] paths = {
+            "patches/bsdiff/" + version + ".bsdiff",
+            "../patches/bsdiff/" + version + ".bsdiff"
+        };
+        for (String p : paths) {
+            File f = new File(p);
+            if (f.exists()) return f;
+        }
+        return null;
     }
     
     private static String findDefaultKeystore() {
