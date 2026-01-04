@@ -127,11 +127,15 @@ public class Patcher {
     }
     
     private void signApk(File apk, String keystorePath) throws Exception {
-        // Try apksig library (Android)
+        // Try apksig library (Android) - must succeed or throw
         try {
             signWithApksig(apk, keystorePath);
             return;
-        } catch (Exception ignored) {}
+        } catch (ClassNotFoundException e) {
+            listener.onProgress("apksig not available, trying alternatives...");
+        } catch (Exception e) {
+            listener.onError("apksig failed: " + e.getMessage());
+        }
         
         // Try apksigner command (desktop)
         try {
@@ -142,10 +146,12 @@ public class Patcher {
                 "--key-pass", "pass:android",
                 apk.getAbsolutePath()
             );
-            if (pb.start().waitFor() == 0) return;
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            if (p.waitFor() == 0) return;
         } catch (Exception ignored) {}
         
-        // Fallback to jarsigner
+        // Fallback to jarsigner (desktop)
         try {
             ProcessBuilder pb = new ProcessBuilder(
                 "jarsigner",
@@ -154,14 +160,16 @@ public class Patcher {
                 "-keypass", "android",
                 apk.getAbsolutePath(), "key"
             );
-            pb.start().waitFor();
-        } catch (Exception e) {
-            listener.onError("Signing failed: " + e.getMessage());
-        }
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            if (p.waitFor() == 0) return;
+        } catch (Exception ignored) {}
+        
+        throw new Exception("No signing method available");
     }
     
     private void signWithApksig(File apkFile, String keystorePath) throws Exception {
-        KeyStore ks = KeyStore.getInstance("JKS");
+        KeyStore ks = KeyStore.getInstance(keystorePath.endsWith(".p12") ? "PKCS12" : "JKS");
         try (FileInputStream fis = new FileInputStream(keystorePath)) {
             ks.load(fis, "android".toCharArray());
         }
@@ -170,7 +178,7 @@ public class Patcher {
         PrivateKey privateKey = (PrivateKey) ks.getKey(alias, "android".toCharArray());
         X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
         
-        // Use apksig via reflection (available on Android)
+        // Use apksig via reflection
         Class<?> builderClass = Class.forName("com.android.apksig.ApkSigner$Builder");
         Class<?> signerConfigClass = Class.forName("com.android.apksig.ApkSigner$SignerConfig");
         

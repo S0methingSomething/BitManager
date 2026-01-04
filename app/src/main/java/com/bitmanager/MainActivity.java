@@ -337,12 +337,17 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             try {
                 String tmp = "/data/local/tmp/bitmanager.apk";
-                shellService.exec("cp " + patchedApk.getAbsolutePath() + " " + tmp);
-                String result = shellService.exec("pm install -r -i com.android.vending " + tmp);
+                // Use cat to copy since cp can't access app private dir
+                shellService.exec("cat " + patchedApk.getAbsolutePath() + " > " + tmp);
+                // Fallback: try direct install from cache if cat fails
+                String result = shellService.exec("pm install -r " + tmp + " 2>&1 || pm install -r " + patchedApk.getAbsolutePath());
                 log(result);
-                shellService.exec("rm " + tmp);
+                shellService.exec("rm -f " + tmp);
                 Shizuku.unbindUserService(shellArgs, shellConn, true);
-            } catch (Exception e) { runOnUiThread(this::installStandard); }
+            } catch (Exception e) { 
+                log("Shizuku install failed: " + e.getMessage());
+                runOnUiThread(this::installStandard); 
+            }
         }).start();
     }
     
