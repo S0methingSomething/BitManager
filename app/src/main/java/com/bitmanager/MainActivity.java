@@ -203,7 +203,7 @@ public class MainActivity extends Activity {
         patchListView.addView(divider);
         
         CheckBox expCb = new CheckBox(this);
-        expCb.setText("⚠ CoreX Pairip Bypass");
+        expCb.setText("🔓 Pairip Bypass (bsdiff)");
         expCb.setTextSize(16);
         expCb.setPadding(0, 16, 0, 12);
         expCb.setChecked(false);
@@ -211,7 +211,7 @@ public class MainActivity extends Activity {
         patchListView.addView(expCb);
         
         TextView expDesc = new TextView(this);
-        expDesc.setText("Bypasses Level 3 pairip protection. Enable if app crashes after patching.");
+        expDesc.setText("Restores pairip-stripped code. Enable if app crashes after patching. Works for v3.21.4.");
         expDesc.setTextSize(12);
         expDesc.setPadding(48, 0, 0, 12);
         expDesc.setAlpha(0.7f);
@@ -227,7 +227,7 @@ public class MainActivity extends Activity {
         selectApkBtn.setEnabled(false);
         
         if (experimentalMode) {
-            log("⚠ CoreX pairip bypass enabled");
+            log("🔓 Pairip bypass enabled");
         }
         
         new Thread(() -> {
@@ -245,9 +245,26 @@ public class MainActivity extends Activity {
                 
                 // Create config
                 Patcher.PatchConfig config = new Patcher.PatchConfig();
-                config.corex = experimentalMode;
                 config.keystore = new File(getFilesDir(), "debug.keystore").getAbsolutePath();
                 config.patches = nativePatches;
+                
+                // Use bsdiff for pairip bypass (works on Android without apktool)
+                if (experimentalMode && apkVersion != null) {
+                    File bsdiff = new File(getFilesDir(), apkVersion + ".bsdiff");
+                    if (!bsdiff.exists()) {
+                        try (InputStream is = getAssets().open(apkVersion + ".bsdiff");
+                             OutputStream os = new FileOutputStream(bsdiff)) {
+                            byte[] buf = new byte[8192];
+                            int len;
+                            while ((len = is.read(buf)) > 0) os.write(buf, 0, len);
+                        } catch (Exception e) {
+                            log("⚠ No bsdiff patch for v" + apkVersion);
+                        }
+                    }
+                    if (bsdiff.exists()) {
+                        config.bsdiffPatch = bsdiff;
+                    }
+                }
                 
                 // Create keystore if needed
                 File ks = new File(config.keystore);
