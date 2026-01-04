@@ -39,7 +39,10 @@ android {
                 'META-INF/NOTICE.txt',
                 'META-INF/LICENSE',
                 'META-INF/NOTICE',
-                '**/*LICENSE*.txt'
+                '**/*LICENSE*.txt',
+                'frameworks/**',
+                '**/*.apk',
+                'arsclib.properties'
             ]
         }
     }

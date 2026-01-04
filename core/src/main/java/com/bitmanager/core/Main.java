@@ -61,7 +61,6 @@ public class Main {
         
         // Create config
         Patcher.PatchConfig config = new Patcher.PatchConfig();
-        config.corex = corex;
         config.keystore = keystore;
         config.patches = patches;
         
