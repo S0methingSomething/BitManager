@@ -29,6 +29,215 @@ public class Patcher {
      * Patch an APK with CoreX pairip bypass
      */
     public boolean patch(File inputApk, File outputApk, PatchConfig config) throws Exception {
+        // Use direct zip patching for bsdiff-only (works on Android without apktool)
+        if (config.bsdiffPatch != null && !config.corex && 
+            (config.patches == null || config.patches.isEmpty())) {
+            return patchDirect(inputApk, outputApk, config);
+        }
+        
+        // Full decompile/recompile for smali patches (requires apktool/java)
+        return patchWithApktool(inputApk, outputApk, config);
+    }
+    
+    /**
+     * Direct zip-based patching - no apktool needed, works on Android
+     */
+    private boolean patchDirect(File inputApk, File outputApk, PatchConfig config) throws Exception {
+        listener.onProgress("Using direct patch mode (no apktool)...");
+        
+        Path workDir = Files.createTempDirectory("bitpatcher");
+        try {
+            // Copy APK to work with
+            Path tempApk = workDir.resolve("temp.apk");
+            Files.copy(inputApk.toPath(), tempApk);
+            
+            // Extract, patch, and replace libil2cpp.so
+            if (config.bsdiffPatch != null) {
+                listener.onProgress("Applying bsdiff patch...");
+                patchLibInZip(tempApk, "lib/arm64-v8a/libil2cpp.so", config.bsdiffPatch);
+                listener.onSuccess("Applied bsdiff patch (pairip bypass)");
+            }
+            
+            // Apply native offset patches if any
+            if (config.patches != null && !config.patches.isEmpty()) {
+                listener.onProgress("Applying offset patches...");
+                patchOffsetsInZip(tempApk, "lib/arm64-v8a/libil2cpp.so", config.patches);
+            }
+            
+            // Sign the APK
+            listener.onProgress("Signing APK...");
+            signApkDirect(tempApk, outputApk.toPath(), config.keystore);
+            listener.onSuccess("Signed");
+            
+            listener.onSuccess("Done! Output: " + outputApk.getAbsolutePath());
+            return true;
+        } finally {
+            deleteRecursive(workDir.toFile());
+        }
+    }
+    
+    private void patchLibInZip(Path apkPath, String entryName, File patchFile) throws Exception {
+        // Read the .so from zip
+        byte[] originalData;
+        try (ZipFile zip = new ZipFile(apkPath.toFile())) {
+            ZipEntry entry = zip.getEntry(entryName);
+            if (entry == null) throw new IOException(entryName + " not found in APK");
+            try (InputStream is = zip.getInputStream(entry)) {
+                originalData = is.readAllBytes();
+            }
+        }
+        
+        // Apply bsdiff
+        byte[] patchData = Files.readAllBytes(patchFile.toPath());
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        io.sigpipe.jbsdiff.Patch.patch(originalData, patchData, out);
+        byte[] patchedData = out.toByteArray();
+        
+        // Replace in zip
+        replaceInZip(apkPath, entryName, patchedData);
+    }
+    
+    private void patchOffsetsInZip(Path apkPath, String entryName, java.util.List<NativePatch> patches) throws Exception {
+        // Read the .so from zip
+        byte[] data;
+        try (ZipFile zip = new ZipFile(apkPath.toFile())) {
+            ZipEntry entry = zip.getEntry(entryName);
+            if (entry == null) throw new IOException(entryName + " not found in APK");
+            try (InputStream is = zip.getInputStream(entry)) {
+                data = is.readAllBytes();
+            }
+        }
+        
+        // Apply patches
+        byte[] returnTrue = new byte[] {0x20, 0x00, (byte)0x80, (byte)0xD2, (byte)0xC0, 0x03, 0x5F, (byte)0xD6};
+        for (NativePatch patch : patches) {
+            for (String offsetStr : patch.offsets) {
+                int offset = Integer.parseInt(offsetStr.replace("0x", ""), 16);
+                System.arraycopy(returnTrue, 0, data, offset, Math.min(returnTrue.length, data.length - offset));
+            }
+        }
+        
+        // Replace in zip
+        replaceInZip(apkPath, entryName, data);
+    }
+    
+    private void replaceInZip(Path zipPath, String entryName, byte[] newData) throws IOException {
+        Path tempZip = zipPath.getParent().resolve("temp_" + System.currentTimeMillis() + ".apk");
+        
+        try (ZipFile oldZip = new ZipFile(zipPath.toFile());
+             ZipOutputStream newZip = new ZipOutputStream(new FileOutputStream(tempZip.toFile()))) {
+            
+            // Copy all entries except the one we're replacing
+            var entries = oldZip.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                ZipEntry newEntry = new ZipEntry(entry.getName());
+                
+                // Preserve compression method for .so files (should be STORED)
+                if (entry.getName().endsWith(".so")) {
+                    newEntry.setMethod(ZipEntry.STORED);
+                    newEntry.setCompressedSize(entry.getName().equals(entryName) ? newData.length : entry.getSize());
+                    newEntry.setSize(entry.getName().equals(entryName) ? newData.length : entry.getSize());
+                    newEntry.setCrc(entry.getName().equals(entryName) ? computeCrc(newData) : entry.getCrc());
+                }
+                
+                newZip.putNextEntry(newEntry);
+                
+                if (entry.getName().equals(entryName)) {
+                    newZip.write(newData);
+                } else {
+                    try (InputStream is = oldZip.getInputStream(entry)) {
+                        is.transferTo(newZip);
+                    }
+                }
+                newZip.closeEntry();
+            }
+        }
+        
+        Files.move(tempZip, zipPath, StandardCopyOption.REPLACE_EXISTING);
+    }
+    
+    private long computeCrc(byte[] data) {
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        crc.update(data);
+        return crc.getValue();
+    }
+    
+    private void signApkDirect(Path input, Path output, String keystorePath) throws Exception {
+        // Copy to output first
+        Files.copy(input, output, StandardCopyOption.REPLACE_EXISTING);
+        
+        // Try using apksig library if available (Android)
+        try {
+            Class<?> signerClass = Class.forName("com.android.apksig.ApkSigner");
+            // Use reflection to call apksig
+            signWithApksig(output, keystorePath);
+            return;
+        } catch (ClassNotFoundException ignored) {}
+        
+        // Try apksigner command (desktop)
+        try {
+            ProcessBuilder pb = new ProcessBuilder(
+                "apksigner", "sign",
+                "--ks", keystorePath,
+                "--ks-pass", "pass:android",
+                "--key-pass", "pass:android",
+                output.toString()
+            );
+            if (pb.start().waitFor() == 0) return;
+        } catch (Exception ignored) {}
+        
+        // Fallback to jarsigner
+        try {
+            ProcessBuilder pb = new ProcessBuilder(
+                "jarsigner",
+                "-keystore", keystorePath,
+                "-storepass", "android",
+                "-keypass", "android",
+                output.toString(), "key"
+            );
+            pb.start().waitFor();
+        } catch (Exception e) {
+            listener.onError("Signing failed: " + e.getMessage());
+        }
+    }
+    
+    private void signWithApksig(Path apk, String keystorePath) throws Exception {
+        // Load keystore
+        java.security.KeyStore ks = java.security.KeyStore.getInstance("JKS");
+        try (FileInputStream fis = new FileInputStream(keystorePath)) {
+            ks.load(fis, "android".toCharArray());
+        }
+        
+        String alias = ks.aliases().nextElement();
+        java.security.PrivateKey privateKey = (java.security.PrivateKey) ks.getKey(alias, "android".toCharArray());
+        java.security.cert.X509Certificate cert = (java.security.cert.X509Certificate) ks.getCertificate(alias);
+        
+        // Use apksig via reflection
+        Class<?> builderClass = Class.forName("com.android.apksig.ApkSigner$Builder");
+        Class<?> signerConfigClass = Class.forName("com.android.apksig.ApkSigner$SignerConfig");
+        
+        // Create signer config
+        Object signerConfig = signerConfigClass.getConstructor(String.class, java.security.PrivateKey.class, java.util.List.class)
+            .newInstance("key", privateKey, java.util.Collections.singletonList(cert));
+        
+        // Create builder
+        Object builder = builderClass.getConstructor(java.util.List.class)
+            .newInstance(java.util.Collections.singletonList(signerConfig));
+        
+        // Set input/output
+        builderClass.getMethod("setInputApk", File.class).invoke(builder, apk.toFile());
+        builderClass.getMethod("setOutputApk", File.class).invoke(builder, apk.toFile());
+        
+        // Build and sign
+        Object signer = builderClass.getMethod("build").invoke(builder);
+        signer.getClass().getMethod("sign").invoke(signer);
+    }
+    
+    /**
+     * Full apktool-based patching - for smali modifications
+     */
+    private boolean patchWithApktool(File inputApk, File outputApk, PatchConfig config) throws Exception {
         Path workDir = Files.createTempDirectory("bitpatcher");
         Path decompiled = workDir.resolve("decompiled");
         
