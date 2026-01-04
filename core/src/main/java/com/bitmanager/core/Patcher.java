@@ -169,9 +169,26 @@ public class Patcher {
     }
     
     private void signWithApksig(File apkFile, String keystorePath) throws Exception {
-        KeyStore ks = KeyStore.getInstance(keystorePath.endsWith(".p12") ? "PKCS12" : "JKS");
-        try (FileInputStream fis = new FileInputStream(keystorePath)) {
-            ks.load(fis, "android".toCharArray());
+        // Try different keystore types - Android doesn't have JKS
+        KeyStore ks = null;
+        String[] types = {"PKCS12", "BKS", "JKS"};
+        Exception lastError = null;
+        
+        for (String type : types) {
+            try {
+                ks = KeyStore.getInstance(type);
+                try (FileInputStream fis = new FileInputStream(keystorePath)) {
+                    ks.load(fis, "android".toCharArray());
+                }
+                break; // Success
+            } catch (Exception e) {
+                lastError = e;
+                ks = null;
+            }
+        }
+        
+        if (ks == null) {
+            throw new Exception("Could not load keystore: " + (lastError != null ? lastError.getMessage() : "unknown"));
         }
         
         String alias = ks.aliases().nextElement();
