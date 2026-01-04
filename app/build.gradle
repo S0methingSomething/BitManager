@@ -32,7 +32,15 @@ android {
     
     packagingOptions {
         resources {
-            excludes += ['jbsdiff-LICENSE.txt', 'META-INF/LICENSE.txt', 'META-INF/NOTICE.txt']
+            excludes += [
+                'jbsdiff-LICENSE.txt',
+                'commons-compress-LICENSE.txt', 
+                'META-INF/LICENSE.txt', 
+                'META-INF/NOTICE.txt',
+                'META-INF/LICENSE',
+                'META-INF/NOTICE',
+                '**/*LICENSE*.txt'
+            ]
         }
     }
 }
