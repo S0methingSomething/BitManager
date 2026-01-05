@@ -72,6 +72,12 @@ public class Patcher {
         listener.onProgress("Writing APK...");
         writeApk(inputApk, outputApk, libPath, libData);
         
+        // Verify ZIP is valid
+        listener.onProgress("Verifying APK...");
+        try (ZipFile verify = new ZipFile(outputApk)) {
+            listener.onProgress("APK has " + verify.size() + " entries, size: " + outputApk.length());
+        }
+        
         // Sign
         listener.onProgress("Signing...");
         signApk(outputApk, config.keystore);
