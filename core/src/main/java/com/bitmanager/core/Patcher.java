@@ -184,6 +184,9 @@ public class Patcher {
         java.security.PrivateKey key = (java.security.PrivateKey) keyStore.getKey(alias, "android".toCharArray());
         java.security.cert.X509Certificate cert = (java.security.cert.X509Certificate) keyStore.getCertificate(alias);
         
+        // apksig truncates output file before reading input - must use different files!
+        File signedApk = new File(apk.getParent(), "signed_" + System.currentTimeMillis() + ".apk");
+        
         Class<?> scb = Class.forName("com.android.apksig.ApkSigner$SignerConfig$Builder");
         Object sc = scb.getConstructor(String.class, java.security.PrivateKey.class, java.util.List.class)
             .newInstance("signer", key, java.util.Collections.singletonList(cert));
@@ -192,13 +195,17 @@ public class Patcher {
         Class<?> asb = Class.forName("com.android.apksig.ApkSigner$Builder");
         Object b = asb.getConstructor(java.util.List.class).newInstance(java.util.Collections.singletonList(cfg));
         asb.getMethod("setInputApk", File.class).invoke(b, apk);
-        asb.getMethod("setOutputApk", File.class).invoke(b, apk);
+        asb.getMethod("setOutputApk", File.class).invoke(b, signedApk);
         asb.getMethod("setV1SigningEnabled", boolean.class).invoke(b, true);
         asb.getMethod("setV2SigningEnabled", boolean.class).invoke(b, true);
         asb.getMethod("setV3SigningEnabled", boolean.class).invoke(b, false);
         
         Object signer = asb.getMethod("build").invoke(b);
         signer.getClass().getMethod("sign").invoke(signer);
+        
+        // Replace original with signed
+        apk.delete();
+        signedApk.renameTo(apk);
     }
     
     private boolean patchWithApktool(File inputApk, File outputApk, PatchConfig config) throws Exception {
