@@ -360,13 +360,16 @@ public class MainActivity extends Activity {
                 String src = patchedApk.getAbsolutePath();
                 String tmp = "/data/local/tmp/bitmanager.apk";
                 
-                // Copy using dd (more reliable for binary files)
+                // Make file world-readable so Shizuku (shell user) can access it
+                patchedApk.setReadable(true, false);
+                
+                // Copy using dd
                 String copyResult = shellService.exec("dd if=" + src + " of=" + tmp + " bs=4096 2>&1");
                 log("[DEBUG] Copy result: " + copyResult);
                 
                 // Verify copy
-                String srcSize = shellService.exec("stat -c%s " + src + " 2>/dev/null || wc -c < " + src);
-                String dstSize = shellService.exec("stat -c%s " + tmp + " 2>/dev/null || wc -c < " + tmp);
+                String srcSize = shellService.exec("stat -c%s " + src + " 2>/dev/null || ls -l " + src + " | awk '{print $5}'");
+                String dstSize = shellService.exec("stat -c%s " + tmp + " 2>/dev/null || ls -l " + tmp + " | awk '{print $5}'");
                 log("[DEBUG] Source size: " + srcSize.trim() + ", Dest size: " + dstSize.trim());
                 
                 // Set permissions
