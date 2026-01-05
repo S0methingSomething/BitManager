@@ -97,58 +97,51 @@ public class Patcher {
     }
     
     private void writeApk(File in, File out, String libPath, byte[] libData) throws IOException {
-        ZipFile oldZip = new ZipFile(in);
-        FileOutputStream fos = new FileOutputStream(out);
-        BufferedOutputStream bos = new BufferedOutputStream(fos);
-        ZipOutputStream newZip = new ZipOutputStream(bos);
-        
-        try {
+        try (ZipFile oldZip = new ZipFile(in);
+             FileOutputStream fos = new FileOutputStream(out);
+             ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(fos, 65536))) {
+            
             var entries = oldZip.entries();
             while (entries.hasMoreElements()) {
                 ZipEntry old = entries.nextElement();
                 ZipEntry neu = new ZipEntry(old.getName());
                 
+                byte[] data;
                 if (old.getName().equals(libPath)) {
-                    // Patched lib - write from memory
-                    neu.setMethod(ZipEntry.STORED);
-                    neu.setSize(libData.length);
-                    neu.setCompressedSize(libData.length);
-                    CRC32 crc = new CRC32();
-                    crc.update(libData);
-                    neu.setCrc(crc.getValue());
-                    newZip.putNextEntry(neu);
-                    newZip.write(libData);
-                } else if (old.getName().endsWith(".so")) {
-                    // Other .so files - must be STORED, stream copy
-                    neu.setMethod(ZipEntry.STORED);
-                    neu.setSize(old.getSize());
-                    neu.setCompressedSize(old.getSize());
-                    neu.setCrc(old.getCrc());
-                    newZip.putNextEntry(neu);
-                    try (InputStream is = oldZip.getInputStream(old)) {
-                        is.transferTo(newZip);
-                    }
+                    data = libData;
                 } else {
-                    // Other files - preserve method, stream copy
-                    neu.setMethod(old.getMethod());
-                    if (old.getMethod() == ZipEntry.STORED) {
-                        neu.setSize(old.getSize());
-                        neu.setCompressedSize(old.getSize());
-                        neu.setCrc(old.getCrc());
-                    }
-                    newZip.putNextEntry(neu);
                     try (InputStream is = oldZip.getInputStream(old)) {
-                        is.transferTo(newZip);
+                        data = is.readAllBytes();
                     }
                 }
-                newZip.closeEntry();
+                
+                if (old.getName().endsWith(".so")) {
+                    neu.setMethod(ZipEntry.STORED);
+                    neu.setSize(data.length);
+                    neu.setCompressedSize(data.length);
+                    CRC32 crc = new CRC32();
+                    crc.update(data);
+                    neu.setCrc(crc.getValue());
+                } else {
+                    neu.setMethod(old.getMethod());
+                    if (old.getMethod() == ZipEntry.STORED) {
+                        neu.setSize(data.length);
+                        neu.setCompressedSize(data.length);
+                        neu.setCrc(old.getCrc());
+                    }
+                }
+                
+                zos.putNextEntry(neu);
+                zos.write(data);
+                zos.closeEntry();
             }
-        } finally {
-            newZip.finish();
-            newZip.close();
-            bos.close();
-            fos.close();
-            oldZip.close();
+            
+            zos.finish();
+        }
+        
+        // Force sync to disk
+        try (RandomAccessFile raf = new RandomAccessFile(out, "rw")) {
+            raf.getFD().sync();
         }
     }
     
