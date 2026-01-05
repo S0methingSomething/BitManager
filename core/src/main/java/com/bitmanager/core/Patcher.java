@@ -90,27 +90,39 @@ public class Patcher {
                 ZipEntry old = entries.nextElement();
                 ZipEntry neu = new ZipEntry(old.getName());
                 
-                byte[] data = old.getName().equals(libPath) ? libData : 
-                    oldZip.getInputStream(old).readAllBytes();
-                
-                if (old.getName().endsWith(".so")) {
+                if (old.getName().equals(libPath)) {
+                    // Patched lib - write from memory
                     neu.setMethod(ZipEntry.STORED);
-                    neu.setSize(data.length);
-                    neu.setCompressedSize(data.length);
+                    neu.setSize(libData.length);
+                    neu.setCompressedSize(libData.length);
                     CRC32 crc = new CRC32();
-                    crc.update(data);
+                    crc.update(libData);
                     neu.setCrc(crc.getValue());
-                } else if (old.getMethod() == ZipEntry.STORED) {
+                    newZip.putNextEntry(neu);
+                    newZip.write(libData);
+                } else if (old.getName().endsWith(".so")) {
+                    // Other .so files - must be STORED, stream copy
                     neu.setMethod(ZipEntry.STORED);
-                    neu.setSize(data.length);
-                    neu.setCompressedSize(data.length);
-                    CRC32 crc = new CRC32();
-                    crc.update(data);
-                    neu.setCrc(crc.getValue());
+                    neu.setSize(old.getSize());
+                    neu.setCompressedSize(old.getSize());
+                    neu.setCrc(old.getCrc());
+                    newZip.putNextEntry(neu);
+                    try (InputStream is = oldZip.getInputStream(old)) {
+                        is.transferTo(newZip);
+                    }
+                } else {
+                    // Other files - preserve method, stream copy
+                    neu.setMethod(old.getMethod());
+                    if (old.getMethod() == ZipEntry.STORED) {
+                        neu.setSize(old.getSize());
+                        neu.setCompressedSize(old.getSize());
+                        neu.setCrc(old.getCrc());
+                    }
+                    newZip.putNextEntry(neu);
+                    try (InputStream is = oldZip.getInputStream(old)) {
+                        is.transferTo(newZip);
+                    }
                 }
-                
-                newZip.putNextEntry(neu);
-                newZip.write(data);
                 newZip.closeEntry();
             }
         }
