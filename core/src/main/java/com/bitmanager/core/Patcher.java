@@ -134,7 +134,10 @@ public class Patcher {
         } catch (ClassNotFoundException e) {
             listener.onProgress("apksig not available, trying alternatives...");
         } catch (Exception e) {
-            listener.onError("apksig failed: " + e.getMessage());
+            // Print full stack trace for debugging
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            listener.onError("apksig failed: " + sw.toString());
         }
         
         // Try apksigner command (desktop)
