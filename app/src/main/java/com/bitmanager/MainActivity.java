@@ -35,6 +35,7 @@ public class MainActivity extends Activity {
     private File patchedApk;
     private StringBuilder logBuilder = new StringBuilder();
     private boolean experimentalMode = false;
+    private boolean debugMode = false;
 
     // Shizuku
     private IShellService shellService;
@@ -211,11 +212,26 @@ public class MainActivity extends Activity {
         patchListView.addView(expCb);
         
         TextView expDesc = new TextView(this);
-        expDesc.setText("Restores pairip-stripped code. Enable if app crashes after patching. Works for v3.21.4.");
+        expDesc.setText("Restores pairip-stripped code. Enable if app crashes after patching.");
         expDesc.setTextSize(12);
         expDesc.setPadding(48, 0, 0, 12);
         expDesc.setAlpha(0.7f);
         patchListView.addView(expDesc);
+        
+        CheckBox debugCb = new CheckBox(this);
+        debugCb.setText("🐛 Debug Mode");
+        debugCb.setTextSize(16);
+        debugCb.setPadding(0, 16, 0, 12);
+        debugCb.setChecked(false);
+        debugCb.setOnCheckedChangeListener((v, checked) -> debugMode = checked);
+        patchListView.addView(debugCb);
+        
+        TextView debugDesc = new TextView(this);
+        debugDesc.setText("Shows detailed logs and saves intermediate files for debugging.");
+        debugDesc.setTextSize(12);
+        debugDesc.setPadding(48, 0, 0, 12);
+        debugDesc.setAlpha(0.7f);
+        patchListView.addView(debugDesc);
         
         patchListView.setVisibility(View.VISIBLE);
         patchBtn.setVisibility(View.VISIBLE);
@@ -279,11 +295,14 @@ public class MainActivity extends Activity {
                 
                 // Patch
                 File output = new File(getCacheDir(), "bitlife_patched.apk");
+                final boolean isDebug = debugMode;
                 Patcher patcher = new Patcher(new Patcher.ProgressListener() {
                     public void onProgress(String msg) { log(msg); }
                     public void onSuccess(String msg) { log("✓ " + msg); }
                     public void onError(String msg) { log("✗ " + msg); }
+                    public void onDebug(String msg) { if (isDebug) log(msg); }
                 });
+                patcher.setDebugMode(debugMode);
                 
                 boolean success = patcher.patch(selectedApk, output, config);
                 
