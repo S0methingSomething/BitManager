@@ -107,7 +107,7 @@ public class Patcher {
                 ZipEntry neu = new ZipEntry(old.getName());
                 
                 if (old.getName().equals(libPath)) {
-                    // Patched lib - from memory
+                    // Patched lib - from memory, STORED
                     neu.setMethod(ZipEntry.STORED);
                     neu.setSize(libData.length);
                     neu.setCompressedSize(libData.length);
@@ -117,7 +117,7 @@ public class Patcher {
                     zos.putNextEntry(neu);
                     zos.write(libData);
                 } else if (old.getName().endsWith(".so")) {
-                    // Other .so - must be STORED, stream copy
+                    // .so files must be STORED and page-aligned
                     neu.setMethod(ZipEntry.STORED);
                     neu.setSize(old.getSize());
                     neu.setCompressedSize(old.getSize());
@@ -127,13 +127,9 @@ public class Patcher {
                         is.transferTo(zos);
                     }
                 } else {
-                    // Other files - preserve compression, stream copy
-                    neu.setMethod(old.getMethod());
-                    if (old.getMethod() == ZipEntry.STORED) {
-                        neu.setSize(old.getSize());
-                        neu.setCompressedSize(old.getSize());
-                        neu.setCrc(old.getCrc());
-                    }
+                    // Other files - let ZipOutputStream handle compression
+                    // getInputStream returns decompressed data, ZipOutputStream will recompress
+                    neu.setMethod(ZipEntry.DEFLATED);
                     zos.putNextEntry(neu);
                     try (InputStream is = oldZip.getInputStream(old)) {
                         is.transferTo(zos);
@@ -204,8 +200,14 @@ public class Patcher {
         signer.getClass().getMethod("sign").invoke(signer);
         
         // Replace original with signed
-        apk.delete();
-        signedApk.renameTo(apk);
+        if (!apk.delete()) {
+            throw new IOException("Failed to delete unsigned APK");
+        }
+        if (!signedApk.renameTo(apk)) {
+            // Rename failed, try copy
+            java.nio.file.Files.copy(signedApk.toPath(), apk.toPath());
+            signedApk.delete();
+        }
     }
     
     private boolean patchWithApktool(File inputApk, File outputApk, PatchConfig config) throws Exception {
