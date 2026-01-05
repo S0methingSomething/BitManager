@@ -200,14 +200,19 @@ public class Patcher {
         Object signer = asb.getMethod("build").invoke(b);
         signer.getClass().getMethod("sign").invoke(signer);
         
+        listener.onProgress("Signed APK: " + signedApk.length() + " bytes");
+        
         // Replace original with signed
-        if (!apk.delete()) {
-            throw new IOException("Failed to delete unsigned APK");
-        }
+        apk.delete();
         if (!signedApk.renameTo(apk)) {
             // Rename failed, try copy
-            java.nio.file.Files.copy(signedApk.toPath(), apk.toPath());
+            java.nio.file.Files.copy(signedApk.toPath(), apk.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             signedApk.delete();
+        }
+        
+        // Verify final APK
+        try (ZipFile verify = new ZipFile(apk)) {
+            listener.onProgress("Final APK: " + apk.length() + " bytes, " + verify.size() + " entries");
         }
     }
     
