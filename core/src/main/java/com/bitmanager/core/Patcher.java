@@ -57,7 +57,7 @@ public class Patcher {
         // Apply offset patches
         if (config.patches != null && !config.patches.isEmpty()) {
             listener.onProgress("Applying offset patches...");
-            byte[] ret1 = {0x20, 0x00, (byte)0x80, (byte)0xD2, (byte)0xC0, 0x03, 0x5F, (byte)0xD6};
+            byte[] ret1 = {0x20, 0x00, (byte)0x80, 0x52, (byte)0xC0, 0x03, 0x5F, (byte)0xD6};
             for (NativePatch p : config.patches) {
                 for (String off : p.offsets) {
                     int o = Integer.parseInt(off.replace("0x", ""), 16);
