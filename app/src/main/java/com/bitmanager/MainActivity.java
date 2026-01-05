@@ -357,12 +357,26 @@ public class MainActivity extends Activity {
     private void doShizukuInstall() {
         new Thread(() -> {
             try {
+                String src = patchedApk.getAbsolutePath();
                 String tmp = "/data/local/tmp/bitmanager.apk";
-                // Use cat to copy since cp can't access app private dir
-                shellService.exec("cat " + patchedApk.getAbsolutePath() + " > " + tmp);
-                // Fallback: try direct install from cache if cat fails
-                String result = shellService.exec("pm install -r " + tmp + " 2>&1 || pm install -r " + patchedApk.getAbsolutePath());
+                
+                // Copy using dd (more reliable for binary files)
+                String copyResult = shellService.exec("dd if=" + src + " of=" + tmp + " bs=4096 2>&1");
+                log("[DEBUG] Copy result: " + copyResult);
+                
+                // Verify copy
+                String srcSize = shellService.exec("stat -c%s " + src + " 2>/dev/null || wc -c < " + src);
+                String dstSize = shellService.exec("stat -c%s " + tmp + " 2>/dev/null || wc -c < " + tmp);
+                log("[DEBUG] Source size: " + srcSize.trim() + ", Dest size: " + dstSize.trim());
+                
+                // Set permissions
+                shellService.exec("chmod 644 " + tmp);
+                
+                // Install
+                String result = shellService.exec("pm install -r " + tmp + " 2>&1");
                 log(result);
+                
+                // Cleanup
                 shellService.exec("rm -f " + tmp);
                 Shizuku.unbindUserService(shellArgs, shellConn, true);
             } catch (Exception e) { 
