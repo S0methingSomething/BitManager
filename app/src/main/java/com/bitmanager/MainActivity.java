@@ -303,8 +303,10 @@ public class MainActivity extends Activity {
                     });
                 }
             } catch (Exception e) {
-                log("\n✗ Error: " + e.getMessage());
-                e.printStackTrace();
+                // Print full stack trace to log
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                log("\n✗ Error: " + sw.toString());
                 runOnUiThread(() -> {
                     selectApkBtn.setEnabled(true);
                     patchBtn.setEnabled(true);
