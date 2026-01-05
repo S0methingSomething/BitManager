@@ -68,9 +68,18 @@ public class Patcher {
             listener.onSuccess("Offset patches applied");
         }
         
-        // Write APK
+        // Write APK to temp file first, then move
         listener.onProgress("Writing APK...");
-        writeApk(inputApk, outputApk, libPath, libData);
+        File tempOut = new File(outputApk.getParentFile(), "temp_" + System.currentTimeMillis() + ".apk");
+        writeApk(inputApk, tempOut, libPath, libData);
+        
+        // Move to final location
+        if (outputApk.exists()) outputApk.delete();
+        if (!tempOut.renameTo(outputApk)) {
+            // If rename fails, copy
+            Files.copy(tempOut.toPath(), outputApk.toPath());
+            tempOut.delete();
+        }
         
         // Verify ZIP is valid
         listener.onProgress("Verifying APK...");
@@ -144,6 +153,8 @@ public class Patcher {
     }
     
     private void signApk(File apk, String ks) throws Exception {
+        listener.onProgress("Signing file: " + apk.getAbsolutePath() + " (exists: " + apk.exists() + ", size: " + apk.length() + ")");
+        
         // Try apksig (Android)
         try {
             Class.forName("com.android.apksig.ApkSigner");
