@@ -82,9 +82,12 @@ public class Patcher {
     }
     
     private void writeApk(File in, File out, String libPath, byte[] libData) throws IOException {
-        try (ZipFile oldZip = new ZipFile(in);
-             ZipOutputStream newZip = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(out)))) {
-            
+        ZipFile oldZip = new ZipFile(in);
+        FileOutputStream fos = new FileOutputStream(out);
+        BufferedOutputStream bos = new BufferedOutputStream(fos);
+        ZipOutputStream newZip = new ZipOutputStream(bos);
+        
+        try {
             var entries = oldZip.entries();
             while (entries.hasMoreElements()) {
                 ZipEntry old = entries.nextElement();
@@ -125,6 +128,12 @@ public class Patcher {
                 }
                 newZip.closeEntry();
             }
+        } finally {
+            newZip.finish();
+            newZip.close();
+            bos.close();
+            fos.close();
+            oldZip.close();
         }
     }
     
