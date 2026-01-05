@@ -169,46 +169,36 @@ public class Patcher {
     }
     
     private void signWithApksig(File apkFile, String keystorePath) throws Exception {
-        // Try different keystore types - Android doesn't have JKS
-        KeyStore ks = null;
-        String[] types = {"PKCS12", "BKS", "JKS"};
-        Exception lastError = null;
-        
-        for (String type : types) {
-            try {
-                ks = KeyStore.getInstance(type);
-                try (FileInputStream fis = new FileInputStream(keystorePath)) {
-                    ks.load(fis, "android".toCharArray());
-                }
-                break; // Success
-            } catch (Exception e) {
-                lastError = e;
-                ks = null;
-            }
-        }
-        
-        if (ks == null) {
-            throw new Exception("Could not load keystore: " + (lastError != null ? lastError.getMessage() : "unknown"));
+        // Load keystore - use PKCS12 (works on Android)
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        try (FileInputStream fis = new FileInputStream(keystorePath)) {
+            ks.load(fis, "android".toCharArray());
         }
         
         String alias = ks.aliases().nextElement();
         PrivateKey privateKey = (PrivateKey) ks.getKey(alias, "android".toCharArray());
         X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
+        java.util.List<X509Certificate> certs = java.util.Collections.singletonList(cert);
         
-        // Use apksig via reflection
-        Class<?> builderClass = Class.forName("com.android.apksig.ApkSigner$Builder");
-        Class<?> signerConfigClass = Class.forName("com.android.apksig.ApkSigner$SignerConfig");
+        // Use apksig via reflection (library provided by Android app)
+        Class<?> signerConfigBuilderClass = Class.forName("com.android.apksig.ApkSigner$SignerConfig$Builder");
+        Object signerConfigBuilder = signerConfigBuilderClass
+            .getConstructor(String.class, PrivateKey.class, java.util.List.class)
+            .newInstance("signer", privateKey, certs);
+        Object signerConfig = signerConfigBuilderClass.getMethod("build").invoke(signerConfigBuilder);
         
-        Object signerConfig = signerConfigClass.getConstructor(String.class, PrivateKey.class, java.util.List.class)
-            .newInstance("key", privateKey, java.util.Collections.singletonList(cert));
-        
-        Object builder = builderClass.getConstructor(java.util.List.class)
+        Class<?> apkSignerBuilderClass = Class.forName("com.android.apksig.ApkSigner$Builder");
+        Object apkSignerBuilder = apkSignerBuilderClass
+            .getConstructor(java.util.List.class)
             .newInstance(java.util.Collections.singletonList(signerConfig));
         
-        builderClass.getMethod("setInputApk", File.class).invoke(builder, apkFile);
-        builderClass.getMethod("setOutputApk", File.class).invoke(builder, apkFile);
+        apkSignerBuilderClass.getMethod("setInputApk", File.class).invoke(apkSignerBuilder, apkFile);
+        apkSignerBuilderClass.getMethod("setOutputApk", File.class).invoke(apkSignerBuilder, apkFile);
+        apkSignerBuilderClass.getMethod("setV1SigningEnabled", boolean.class).invoke(apkSignerBuilder, true);
+        apkSignerBuilderClass.getMethod("setV2SigningEnabled", boolean.class).invoke(apkSignerBuilder, true);
+        apkSignerBuilderClass.getMethod("setV3SigningEnabled", boolean.class).invoke(apkSignerBuilder, false);
         
-        Object signer = builderClass.getMethod("build").invoke(builder);
+        Object signer = apkSignerBuilderClass.getMethod("build").invoke(apkSignerBuilder);
         signer.getClass().getMethod("sign").invoke(signer);
     }
     

@@ -245,7 +245,7 @@ public class MainActivity extends Activity {
                 
                 // Create config
                 Patcher.PatchConfig config = new Patcher.PatchConfig();
-                config.keystore = new File(getFilesDir(), "debug.keystore").getAbsolutePath();
+                config.keystore = new File(getFilesDir(), "debug.p12").getAbsolutePath();
                 config.patches = nativePatches;
                 
                 // Use bsdiff for pairip bypass (works on Android without apktool)
@@ -269,7 +269,7 @@ public class MainActivity extends Activity {
                 // Create keystore if needed
                 File ks = new File(config.keystore);
                 if (!ks.exists()) {
-                    try (InputStream is = getAssets().open("debug.keystore");
+                    try (InputStream is = getAssets().open("debug.p12");
                          OutputStream os = new FileOutputStream(ks)) {
                         byte[] buf = new byte[8192];
                         int len;
