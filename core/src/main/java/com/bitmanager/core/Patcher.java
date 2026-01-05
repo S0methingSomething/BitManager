@@ -181,12 +181,20 @@ public class Patcher {
         java.util.List<X509Certificate> certs = java.util.Collections.singletonList(cert);
         
         // Use apksig via reflection (library provided by Android app)
+        // SignerConfig.Builder(String name, PrivateKey privateKey, List<X509Certificate> certificates)
         Class<?> signerConfigBuilderClass = Class.forName("com.android.apksig.ApkSigner$SignerConfig$Builder");
+        
+        // Debug: print available constructors
+        for (java.lang.reflect.Constructor<?> c : signerConfigBuilderClass.getConstructors()) {
+            listener.onProgress("Constructor: " + java.util.Arrays.toString(c.getParameterTypes()));
+        }
+        
         Object signerConfigBuilder = signerConfigBuilderClass
             .getConstructor(String.class, PrivateKey.class, java.util.List.class)
             .newInstance("signer", privateKey, certs);
         Object signerConfig = signerConfigBuilderClass.getMethod("build").invoke(signerConfigBuilder);
         
+        // ApkSigner.Builder(List<SignerConfig> signerConfigs)
         Class<?> apkSignerBuilderClass = Class.forName("com.android.apksig.ApkSigner$Builder");
         Object apkSignerBuilder = apkSignerBuilderClass
             .getConstructor(java.util.List.class)
