@@ -105,8 +105,9 @@ public class Patcher {
             while (entries.hasMoreElements()) {
                 ZipEntry old = entries.nextElement();
                 ZipEntry neu = new ZipEntry(old.getName());
+                String name = old.getName();
                 
-                if (old.getName().equals(libPath)) {
+                if (name.equals(libPath)) {
                     // Patched lib - from memory, STORED
                     neu.setMethod(ZipEntry.STORED);
                     neu.setSize(libData.length);
@@ -116,8 +117,9 @@ public class Patcher {
                     neu.setCrc(crc.getValue());
                     zos.putNextEntry(neu);
                     zos.write(libData);
-                } else if (old.getName().endsWith(".so")) {
-                    // .so files must be STORED and page-aligned
+                } else if (name.endsWith(".so") || name.equals("resources.arsc") || 
+                           old.getMethod() == ZipEntry.STORED) {
+                    // Must preserve STORED: .so files, resources.arsc, and originally STORED files
                     neu.setMethod(ZipEntry.STORED);
                     neu.setSize(old.getSize());
                     neu.setCompressedSize(old.getSize());
@@ -127,8 +129,7 @@ public class Patcher {
                         is.transferTo(zos);
                     }
                 } else {
-                    // Other files - let ZipOutputStream handle compression
-                    // getInputStream returns decompressed data, ZipOutputStream will recompress
+                    // Compressed files - recompress
                     neu.setMethod(ZipEntry.DEFLATED);
                     zos.putNextEntry(neu);
                     try (InputStream is = oldZip.getInputStream(old)) {
